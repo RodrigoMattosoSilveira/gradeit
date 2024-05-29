@@ -24,3 +24,4 @@ go.work.sum
 # ignore working directories
 bin/
 pkg/
+src/gradeit
