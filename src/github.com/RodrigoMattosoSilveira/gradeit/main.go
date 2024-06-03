@@ -2,24 +2,28 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 
 	"log/slog"
 
+	cfg "github.com/RodrigoMattosoSilveira/gradeit/configs"
+	"github.com/RodrigoMattosoSilveira/gradeit/controllers/person"
+	"github.com/RodrigoMattosoSilveira/gradeit/repository"
+	"github.com/RodrigoMattosoSilveira/gradeit/services"
 	"github.com/gin-gonic/gin"
-	c "github.com/RodrigoMattosoSilveira/gradeit/configs"
 )
 
 func main() {
     // initialise gofr object
-	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
+	router := gin.Default()
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
 
-	err := c.SetEnv()
+	err := cfg.SetEnv()
 	if err != nil {
 		panic("Error setting the environment")
 	}
@@ -32,5 +36,16 @@ func main() {
 	slog.Info(fmt.Sprintf("DB_DIALECT = %s",  os.Getenv("DB_DIALECT")))
 	slog.Info(fmt.Sprintf("DB_NAME = %s",  os.Getenv("DB_NAME")))
 
-	r.Run() // listen and serve on 0.0.0.0:8080
+	repo := repository.NewPerson()
+	svc := services.NewPerson(repo)
+	personRoutes := controllers.NewPerson(svc)
+
+	router.POST("/person", personRoutes.Create)
+	router.GET("/person", personRoutes.GetAll)
+	router.GET("/person/:id", personRoutes.GetByID)
+	router.PUT("/person", personRoutes.Update)
+	router.DELETE("/delete", personRoutes.Delete)
+
+	http.ListenAndServe(fmt.Sprintf(":%s",  os.Getenv("HTTP_PORT")), router)
+	// route.Run() // listen and serve on 0.0.0.0:8080
 }
