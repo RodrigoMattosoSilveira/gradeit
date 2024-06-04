@@ -17,6 +17,7 @@ type PersonUpdate struct {
 
 type Person struct {
 	gorm.Model
+	ID        uint64 `gorm:"primaryKey"`
 	Name      string
 	Email     string `gorm:"unique"`
 	Password  string

@@ -27,8 +27,8 @@ func (s service) GetByID(ctx *gin.Context, id uint64) {
 	s.repository.GetByID(ctx, id)
 }
 
-func (s service) Update(ctx *gin.Context, id uint64, person models.Person) {
-	s.repository.Update(ctx, id, person)
+func (s service) Update(ctx *gin.Context, person models.Person) {
+	s.repository.Update(ctx, person)
 }
 
 func (s service) Delete(ctx *gin.Context, id uint64) {

@@ -1,8 +1,7 @@
 package controllers
 
 import (
-	"net/http"
-	"strconv"
+	"fmt"
 
 	"github.com/RodrigoMattosoSilveira/gradeit/interfaces"
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
@@ -22,15 +21,27 @@ func NewPerson(s interfaces.PersonCrudInt) controller {
 }
 
 func (c controller) Create(ctx *gin.Context) {
+	errors := make([]string, 0)
 	var body models.PersonCreate
+
 	if err := ctx.ShouldBind(&body); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		errors = append(errors, err.Error())
 	}
 	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
-	validPerson, errors := ValidatePersonCreate(person)
-	if !validPerson {
-		ctx.JSON(500, gin.H{"error": errors})
+
+	if !ValidEmail(person.Email) {
+		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
+	}
+
+	if !UniqueEmail(person.Email) {
+		errors = append(errors, fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
+	}
+
+	if !ValidPassword(person.Password) {
+		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
+	}
+	if  len(errors) > 0 {
+		ctx.JSON(422, gin.H{"error": errors})
 		return
 	}
 	c.services.Create(ctx, person)
@@ -41,33 +52,92 @@ func (c controller) GetAll(ctx *gin.Context) {
 }
 
 func (c controller) GetByID(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
-	if err != nil {
-		ctx.JSON(500, gin.H{"error": err})
+	errors := make([]string, 0)
+
+	err, idParm := ParseIdParm(ctx )
+	if !err  {
+		errors = append(errors, "Person GetById, unable to parse id parameter")
+	}
+
+	valid, id := ValidIdParm(idParm)
+	if !valid {
+		errors = append(errors, fmt.Sprintf("GetByID %d: invalid id", id))
+	}
+
+
+	if !PersonInDB(uint64(id)) {
+		errors = append(errors, fmt.Sprintf("PersonUpdate %d: person not in db", id))
+	}
+
+	if len(errors) > 0 {
+		ctx.JSON(500, gin.H{"error": errors})
 		return
 	}
+
 	c.services.GetByID(ctx, id)
 }
 
 func (c controller) Update(ctx *gin.Context) {
 	var body models.PersonUpdate
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
-	if err != nil {
-		ctx.JSON(500, gin.H{"error": err})
-		return
+	errors := make([]string, 0)
+
+	valid, idParm := ParseIdParm(ctx )
+	if !valid  {
+		errors = append(errors, "Person GetById,unable to parse id parameter")
 	}
+
 	if err := ctx.ShouldBind(&body); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		errors = append(errors, err.Error())
 	}
 	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
-	c.services.Update(ctx, id, person)
+
+	valid, id := ValidIdParm(idParm)
+	if !valid {
+		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid id", person.ID))
+	} else {
+		person.ID = id
+	}
+
+	if !PersonInDB(uint64(person.ID)) {
+		errors = append(errors, fmt.Sprintf("PersonUpdate %s: person not in db", idParm))
+	}
+	
+	if person.Email !="" && !ValidEmail(person.Email) {
+		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid email = %s", person.ID, person.Email))
+	}
+
+	if person.Password !="" && !ValidPassword(person.Password) {
+		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid password = %s", person.ID, person.Password))
+	}
+	if len(errors) > 0 {
+		ctx.JSON(500, gin.H{"error": errors})
+		return
+	}
+
+	c.services.Update(ctx, person)
 }
 
 func (c controller) Delete(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 64)
-	if err != nil {
-		ctx.JSON(500, gin.H{"error": err})
+	errors := make([]string, 0)
+
+	valid, idParm := ParseIdParm(ctx )
+	if !valid  {
+		errors = append(errors, "Person Delete, unable to parse id parameter")
 	}
+
+	valid, id := ValidIdParm(idParm)
+	if !valid {
+		errors = append(errors, fmt.Sprintf("Delete %d: invalid id",id))
+	}
+
+	if !PersonInDB(uint64(id)) {
+		errors = append(errors, fmt.Sprintf("Delete %s: person not in db", idParm))
+	}
+
+	if len(errors) > 0 {
+		ctx.JSON(500, gin.H{"error": errors})
+		return
+	}
+
 	c.services.Delete(ctx, id)
 }

@@ -1,10 +1,13 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
-	"github.com/RodrigoMattosoSilveira/gradeit/models"
+	"github.com/RodrigoMattosoSilveira/gradeit/configs"
 	"github.com/RodrigoMattosoSilveira/gradeit/interfaces"
+	"github.com/RodrigoMattosoSilveira/gradeit/models"
 )
 
 type repository struct{}
@@ -18,20 +21,46 @@ func NewPerson() interfaces.PersonCrudInt {
 //
 // Inserts a record in the user table
 func (repo repository) Create(ctx *gin.Context, person models.Person) {
-	ctx.JSON(200, gin.H{"data": "person created"})
+	result := configs.DB.Create(&person)
+	if result.Error != nil {
+		ctx.JSON(500, gin.H{"error": result.Error})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"data": person})
 }
 
 func (repo repository) GetAll(ctx *gin.Context) {
-	ctx.JSON(200, gin.H{"data": "people retrieved"})
+	var people []models.Person
+
+	result := configs.DB.Find(&people)
+	if result.Error != nil {
+		ctx.JSON(500, gin.H{"error": result.Error})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"data": people})
 }
 
 func (repo repository) GetByID(ctx *gin.Context, id uint64) {
-	ctx.JSON(200, gin.H{"data": "person retrieved"})
+	var person models.Person
+
+	result := configs.DB.First(&person, id)
+	if result.Error != nil {
+		ctx.JSON(500, gin.H{"error": result.Error})
+		return
+	}
+
+	ctx.JSON(200, gin.H{"data": person})
 }
 
-func (repo repository) Update(ctx *gin.Context, id uint64, person models.Person) {
-	ctx.JSON(200, gin.H{"data": "person updated"})
+func (repo repository) Update(ctx *gin.Context, person models.Person) {
+	configs.DB.Model(&person).Updates(models.Person{Name: person.Name, Email: person.Email, Password: person.Password})
+
+	ctx.JSON(200, gin.H{"data": person})
 }
 func (repo repository) Delete(ctx *gin.Context, id uint64) {
-	ctx.JSON(200, gin.H{"data": "person deleted"})
+	configs.DB.Delete(&models.Person{}, id)
+
+	ctx.JSON(200, gin.H{"data": fmt.Sprintf("deleted person.id=%d", id)})
 }

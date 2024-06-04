@@ -37,8 +37,8 @@ func main() {
 	router.POST("/person", personRoutes.Create)
 	router.GET("/person", personRoutes.GetAll)
 	router.GET("/person/:id", personRoutes.GetByID)
-	router.PUT("/person", personRoutes.Update)
-	router.DELETE("/delete", personRoutes.Delete)
+	router.PUT("/person/:id", personRoutes.Update)
+	router.DELETE("/person/:id", personRoutes.Delete)
 
 	// start the service
 	http.ListenAndServe(fmt.Sprintf(":%s",  os.Getenv("HTTP_PORT")), router)
