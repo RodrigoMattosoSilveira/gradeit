@@ -24,4 +24,5 @@ go.work.sum
 # ignore working directories
 bin/
 pkg/
-src/gradeit
+src/github.com/RodrigoMattosoSilveira/gradeit/gradeit
+src/github.com/RodrigoMattosoSilveira/gradeit/data/
