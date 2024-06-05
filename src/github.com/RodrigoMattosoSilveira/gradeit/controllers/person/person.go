@@ -59,7 +59,7 @@ func (c controller) GetByID(ctx *gin.Context) {
 		errors = append(errors, "Person GetById, unable to parse id parameter")
 	}
 
-	valid, id := ValidIdParm(idParm)
+	id, valid := ValidIdParm(idParm)
 	if !valid {
 		errors = append(errors, fmt.Sprintf("GetByID %d: invalid id", id))
 	}
@@ -91,7 +91,7 @@ func (c controller) Update(ctx *gin.Context) {
 	}
 	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
 
-	valid, id := ValidIdParm(idParm)
+	id, valid := ValidIdParm(idParm)
 	if !valid {
 		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid id", person.ID))
 	} else {
@@ -125,7 +125,7 @@ func (c controller) Delete(ctx *gin.Context) {
 		errors = append(errors, "Person Delete, unable to parse id parameter")
 	}
 
-	valid, id := ValidIdParm(idParm)
+	id, valid := ValidIdParm(idParm)
 	if !valid {
 		errors = append(errors, fmt.Sprintf("Delete %d: invalid id",id))
 	}
