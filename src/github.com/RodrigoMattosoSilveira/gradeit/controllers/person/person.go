@@ -66,7 +66,7 @@ func (c controller) GetByID(ctx *gin.Context) {
 	}
 
 	if !PersonInDB(uint64(id)) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: person not in db", id))
+		errors = append(errors, fmt.Sprintf("Person GetByID %d: person not in db", id))
 	}
 
 	if len(errors) > 0 {

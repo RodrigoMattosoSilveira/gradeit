@@ -17,6 +17,9 @@ func SetEnv() {
 	}
 
 	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "" {
+		appEnv = "DEV"
+	}
 
 	if appEnv=="DEV" {
 		err = godotenv.Overload("./configs/.dev.env")
