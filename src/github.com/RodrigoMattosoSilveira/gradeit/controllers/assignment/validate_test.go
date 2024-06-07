@@ -1,4 +1,4 @@
-package person
+package assignment
 
 import (
 	"testing"

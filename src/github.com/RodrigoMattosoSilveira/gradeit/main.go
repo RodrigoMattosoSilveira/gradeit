@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"os"
 
-	cfg "github.com/RodrigoMattosoSilveira/gradeit/configs"
-	"github.com/RodrigoMattosoSilveira/gradeit/controllers/person"
-	"github.com/RodrigoMattosoSilveira/gradeit/models"
-	"github.com/RodrigoMattosoSilveira/gradeit/repository"
-	"github.com/RodrigoMattosoSilveira/gradeit/services"
 	"github.com/gin-gonic/gin"
+
+	cfg "github.com/RodrigoMattosoSilveira/gradeit/configs"
+	ctrlPerson "github.com/RodrigoMattosoSilveira/gradeit/controllers/person"
+	svcPerson "github.com/RodrigoMattosoSilveira/gradeit/services/person"
+	"github.com/RodrigoMattosoSilveira/gradeit/models"
+	repoPerson "github.com/RodrigoMattosoSilveira/gradeit/repository/person"
 )
 
 func main() {
@@ -30,9 +31,9 @@ func main() {
 	})
 
 	// Set up ther person routes
-	repo := repository.NewPerson()
-	svc := services.NewPerson(repo)
-	personRoutes := controllers.NewPerson(svc)
+	repo := repoPerson.NewPerson()
+	svc := svcPerson.NewPerson(repo)
+	personRoutes := ctrlPerson.NewPerson(svc)
 
 	router.POST("/person", personRoutes.Create)
 	router.GET("/person", personRoutes.GetAll)
@@ -42,5 +43,21 @@ func main() {
 
 	// start the service
 	http.ListenAndServe(fmt.Sprintf(":%s",  os.Getenv("HTTP_PORT")), router)
-	// route.Run() // listen and serve on 0.0.0.0:8080
+	// 
 }
+	
+	func personRoutes(router *gin.Engine) {
+
+		// Set up ther person routes
+		repo := repoPerson.NewPerson()
+		svc := svcPerson.NewPerson(repo)
+		personRoutes := ctrlPerson.NewPerson(svc)
+	
+	
+		router.POST("/person", personRoutes.Create)
+		router.GET("/person", personRoutes.GetAll)
+		router.GET("/person/:id", personRoutes.GetByID)
+		router.PUT("/person/:id", personRoutes.Update)
+		router.DELETE("/person/:id", personRoutes.Delete)
+	
+	}

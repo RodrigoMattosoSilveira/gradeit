@@ -1,22 +1,23 @@
-package controllers
+package person
 
 import (
 	"fmt"
 
-	"github.com/RodrigoMattosoSilveira/gradeit/interfaces"
+	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
+	validation "github.com/RodrigoMattosoSilveira/gradeit/controllers/validation"
 
 	"github.com/gin-gonic/gin"
 )
 
 type controller struct {
-	services interfaces.PersonCrudInt
+	services person.PersonSvcInt
 }
 
 // NewPerson - is a factory function to inject service in handler.
 //
 //nolint:revive // handler has to be unexported
-func NewPerson(s interfaces.PersonCrudInt) controller {
+func NewPerson(s person.PersonSvcInt) controller {
 	return controller{services: s}
 }
 
@@ -40,7 +41,7 @@ func (c controller) Create(ctx *gin.Context) {
 	if !ValidPassword(person.Password) {
 		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
 	}
-	if  len(errors) > 0 {
+	if len(errors) > 0 {
 		ctx.JSON(422, gin.H{"error": errors})
 		return
 	}
@@ -54,8 +55,8 @@ func (c controller) GetAll(ctx *gin.Context) {
 func (c controller) GetByID(ctx *gin.Context) {
 	errors := make([]string, 0)
 
-	err, idParm := ParseIdParm(ctx )
-	if !err  {
+	err, idParm := validation.ParseIdParm(ctx)
+	if !err {
 		errors = append(errors, "Person GetById, unable to parse id parameter")
 	}
 
@@ -64,13 +65,12 @@ func (c controller) GetByID(ctx *gin.Context) {
 		errors = append(errors, fmt.Sprintf("GetByID %d: invalid id", id))
 	}
 
-
 	if !PersonInDB(uint64(id)) {
 		errors = append(errors, fmt.Sprintf("PersonUpdate %d: person not in db", id))
 	}
 
 	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+		ctx.JSON(422, gin.H{"error": errors})
 		return
 	}
 
@@ -81,8 +81,8 @@ func (c controller) Update(ctx *gin.Context) {
 	var body models.PersonUpdate
 	errors := make([]string, 0)
 
-	valid, idParm := ParseIdParm(ctx )
-	if !valid  {
+	valid, idParm := validation.ParseIdParm(ctx)
+	if !valid {
 		errors = append(errors, "Person GetById,unable to parse id parameter")
 	}
 
@@ -101,16 +101,16 @@ func (c controller) Update(ctx *gin.Context) {
 	if !PersonInDB(uint64(person.ID)) {
 		errors = append(errors, fmt.Sprintf("PersonUpdate %s: person not in db", idParm))
 	}
-	
-	if person.Email !="" && !ValidEmail(person.Email) {
+
+	if person.Email != "" && !ValidEmail(person.Email) {
 		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid email = %s", person.ID, person.Email))
 	}
 
-	if person.Password !="" && !ValidPassword(person.Password) {
+	if person.Password != "" && ValidPassword(person.Password) {
 		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid password = %s", person.ID, person.Password))
 	}
 	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+		ctx.JSON(422, gin.H{"error": errors})
 		return
 	}
 
@@ -120,14 +120,14 @@ func (c controller) Update(ctx *gin.Context) {
 func (c controller) Delete(ctx *gin.Context) {
 	errors := make([]string, 0)
 
-	valid, idParm := ParseIdParm(ctx )
-	if !valid  {
+	valid, idParm := validation.ParseIdParm(ctx)
+	if !valid {
 		errors = append(errors, "Person Delete, unable to parse id parameter")
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("Delete %d: invalid id",id))
+		errors = append(errors, fmt.Sprintf("Delete %d: invalid id", id))
 	}
 
 	if !PersonInDB(uint64(id)) {
@@ -135,7 +135,7 @@ func (c controller) Delete(ctx *gin.Context) {
 	}
 
 	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+		ctx.JSON(422, gin.H{"error": errors})
 		return
 	}
 
