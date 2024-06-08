@@ -25,8 +25,15 @@ func (c controller) Create(ctx *gin.Context) {
 	errors := make([]string, 0)
 	var body models.PersonCreate
 
-	if err := ctx.ShouldBind(&body); err != nil {
-		errors = append(errors, err.Error())
+	contentType := ctx.Request.Header.Get("Content-Type")
+	if (contentType == "application/json") {
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			if err := ctx.ShouldBind(&body); err != nil {
+				errors = append(errors, err.Error())
+				ctx.JSON(422, gin.H{"error": errors})
+				return
+			}
+		}
 	}
 	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
 

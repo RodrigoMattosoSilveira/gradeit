@@ -4,6 +4,7 @@ import (
 	// "net/http"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -15,21 +16,28 @@ import (
 
 //  Inspired by
 // https://blog.marcnuri.com/go-testing-gin-gonic-with-httptest
-// 
+//
 func TestPersonCreateOK(t *testing.T) {
 	router := GetRouter()
 	RoutesPerson(router)
 	cfg.Config()
 
 	person := models.PersonCreate {
-		Name: "Thomas Edison",
-		Email: "edison@mail.com",
-		Password: "edison123",
+		Name: "Neils Bohr",
+		Email: "Bohr@mail.com",
+		Password: "Bohr123abc",
 	}
 
 	recorder := httptest.NewRecorder()
-	personString := `{"name": "Thomas Edison", "email": "edison@mail.com", "password": "edison124"}`
-	router.ServeHTTP(recorder, httptest.NewRequest("POST", "/person", strings.NewReader(personString)))
+	// personJson, _ := json.Marshal(person)
+	// req :=  httptest.NewRequest("POST", "/person", strings.NewReader(string(personJson)))
+	// req, _ := http.NewRequest("POST", "/person", strings.NewReader(string(personJson)))
+	personString := `{"Name": "Neils Bohr", "Email": "Bohr@mail.com", "Password": "Bohr123abc"}`
+	req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
+	req.Header.Set("Content-Type", "application/json")
+
+ 	router.ServeHTTP(recorder, req)
+
 
 	t.Run("Returns 200 status code", func(t *testing.T) {
 		if recorder.Code != 200 {
@@ -168,4 +176,24 @@ func structToString (sourceStruct interface{}) (string, error) {
 		return "", error
 	} 
 	return string(sourceJson), nil
+}
+
+// Language: GO
+// Convert a string to JSON
+// Input: string
+// Output:JSON if OK, nil otherwise 
+// 
+func stringToJSON (sourceString string) []byte {
+   var obj map[string]interface{}
+    err := json.Unmarshal([]byte(sourceString), &obj)
+    if err != nil {
+        fmt.Println(err)
+        return nil
+    }
+    jsonStr, err := json.Marshal(obj)
+    if err != nil {
+        fmt.Println(err)
+        return nil
+    }
+   return jsonStr
 }

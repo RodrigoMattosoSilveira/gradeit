@@ -9,7 +9,7 @@ import (
 )
 
 // TODO move it into the configs directory ... I get an import cycle error
-func RoutesAssignment(router *gin.Engine) {
+func RoutesAssignmentt(router *gin.Engine) {
 
 	// Set up ther person routes
 	repo := repo.NewAssignment()

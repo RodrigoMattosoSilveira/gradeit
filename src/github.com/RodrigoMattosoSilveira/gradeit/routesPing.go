@@ -5,7 +5,7 @@ import (
 )
 
 // TODO move it into the configs directory ... I get an import cycle error
-func RoutesPing(router *gin.Engine) {
+func RoutesPingg(router *gin.Engine) {
 
 	if router == nil {
 		router = gin.Default()

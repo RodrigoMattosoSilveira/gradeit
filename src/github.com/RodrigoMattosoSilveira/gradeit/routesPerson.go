@@ -9,7 +9,7 @@ import (
 )
 
 // TODO move it into the configs directory ... I get an import cycle error
-func RoutesPerson(router *gin.Engine) {
+func RoutesPersonn(router *gin.Engine) {
 	// Set up ther person routes
 	repo := repo.NewPerson()
 	svc := srvc.NewPerson(repo)
