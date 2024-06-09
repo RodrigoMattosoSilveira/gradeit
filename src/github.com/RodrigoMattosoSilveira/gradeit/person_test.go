@@ -22,6 +22,9 @@ func TestPersonCreateOK(t *testing.T) {
 	RoutesPerson(router)
 	cfg.Config()
 
+	// Delete all records with the email of the record about to be inserted
+	cfg.DB.Exec("DELETE FROM people WHERE email like 'Einstein123abc")
+
 	person := models.PersonCreate {
 		Name: "Neils Bohr",
 		Email: "Bohr@mail.com",
@@ -29,10 +32,7 @@ func TestPersonCreateOK(t *testing.T) {
 	}
 
 	recorder := httptest.NewRecorder()
-	// personJson, _ := json.Marshal(person)
-	// req :=  httptest.NewRequest("POST", "/person", strings.NewReader(string(personJson)))
-	// req, _ := http.NewRequest("POST", "/person", strings.NewReader(string(personJson)))
-	personString := `{"Name": "Neils Bohr", "Email": "Bohr@mail.com", "Password": "Bohr123abc"}`
+	personString := `{"Name": " Albert Einstein", "Email": "Einstein@mail.com", "Password": "Einstein123abc"}`
 	req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -84,6 +84,26 @@ func TestPersonCreateOK(t *testing.T) {
 		}
 		if personDataMap["data"]["Password"] != person.Password {
 			t.Error(fmt.Errorf("Expected Person Password: %s, got %s", person.Password, personDataMap["Password"]))
+		}
+	})
+}
+
+func TestPersonCreateEmailExists(t *testing.T) {
+	router := GetRouter()
+	RoutesPerson(router)
+	cfg.Config()
+
+	recorder := httptest.NewRecorder()
+	personString := `{"Name": "Richard Feyman", "Email": "Bohr@mail.com", "Password": "Feyman123abc"}`
+	req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
+	req.Header.Set("Content-Type", "application/json")
+
+ 	router.ServeHTTP(recorder, req)
+
+
+	t.Run("Returns 200 status code", func(t *testing.T) {
+		if recorder.Code != 422 {
+		  t.Error("Expected 422, got ", recorder.Code)
 		}
 	})
 }
@@ -164,36 +184,4 @@ func TestPersonGetIdNotOK(t *testing.T) {
 		  t.Error("Expected 200, got ", recorder.Code)
 		}
 	})
-}
-
-// Convert a structure to a string
-// Input: interface{}
-// Output: (string, nil) if OK,  ("", error) otherwise 
-// 
-func structToString (sourceStruct interface{}) (string, error) {
-	sourceJson, error := json.Marshal(sourceStruct)
-	if error != nil {
-		return "", error
-	} 
-	return string(sourceJson), nil
-}
-
-// Language: GO
-// Convert a string to JSON
-// Input: string
-// Output:JSON if OK, nil otherwise 
-// 
-func stringToJSON (sourceString string) []byte {
-   var obj map[string]interface{}
-    err := json.Unmarshal([]byte(sourceString), &obj)
-    if err != nil {
-        fmt.Println(err)
-        return nil
-    }
-    jsonStr, err := json.Marshal(obj)
-    if err != nil {
-        fmt.Println(err)
-        return nil
-    }
-   return jsonStr
 }

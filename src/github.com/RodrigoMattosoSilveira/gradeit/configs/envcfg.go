@@ -20,28 +20,25 @@ func SetEnv() {
 	if appEnv == "" {
 		appEnv = "DEV"
 	}
-
-	if appEnv=="DEV" {
-		err = godotenv.Overload("./configs/.dev.env")
-		if err != nil {
-			panic("SetEnv: error loading .dev.env file")
-		}
-	} else {
-		if appEnv=="STAGE" {
-			err = godotenv.Overload("./configs/.stage.env")
-			if err != nil {
-				panic("SetEnv: error loading .stage.env file")
-			}
-		} else {
-			if appEnv=="PROD" {
-				err = godotenv.Overload("./configs/.prod.env")
-				if err != nil {
-					panic("SetEnv: error loading .prod.env file")
-				}
-			}
-		}
+	var appEnvFileName string
+	switch appEnv {
+		case "DEV":
+			appEnvFileName = "./configs/.dev.env"
+		case "QA":
+			appEnvFileName = "./configs/.qa.env"
+		case "E2E":
+			appEnvFileName = "./configs/.e2e.env"
+		case "STAGE":
+			appEnvFileName = "./configs/.stage.env"
+		case "PROD":
+			appEnvFileName = "./configs/.prod.env"
 	}
 
+	err = godotenv.Overload(appEnvFileName)
+	if err != nil {
+		panic(fmt.Sprintf("SetEnv: error loading%s", appEnvFileName))
+	}
+	
 	// Showcase environment variables handling
 	// without setting the environment
 	//
