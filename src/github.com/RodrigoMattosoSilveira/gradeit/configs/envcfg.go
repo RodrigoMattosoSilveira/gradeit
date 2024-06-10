@@ -10,11 +10,17 @@ import (
 
 
 func SetEnv() {
+	goPath := os.Getenv("GOPATH")
+	if goPath == "" {
+		panic("SetEnv: GOPATH not defined")
+	}
+	appPath := fmt.Sprintf("%s/src/github.com/RodrigoMattosoSilveira/gradeit", goPath)
 	// If ./configs/.env exists, load ./configs/.env
-	err := godotenv.Load("./configs/.env")
+	err := godotenv.Load(fmt.Sprintf("%s/configs/.env", appPath))
 	if err != nil {
 		panic(fmt.Sprintf("SetEnv: error loading %s file", ".env"))
 	}
+
 
 	appEnv := os.Getenv("APP_ENV")
 	if appEnv == "" {
@@ -23,15 +29,15 @@ func SetEnv() {
 	var appEnvFileName string
 	switch appEnv {
 		case "DEV":
-			appEnvFileName = "./configs/.dev.env"
+			appEnvFileName = fmt.Sprintf("%s/configs/.dev.env", appPath)
 		case "QA":
-			appEnvFileName = "./configs/.qa.env"
+			appEnvFileName = fmt.Sprintf("%s/configs/.qa.env", appPath)
 		case "E2E":
-			appEnvFileName = "./configs/.e2e.env"
+			appEnvFileName = fmt.Sprintf("%s/configs/.e2e.env", appPath)
 		case "STAGE":
-			appEnvFileName = "./configs/.stage.env"
+			appEnvFileName = fmt.Sprintf("%s/configs/.stage.env", appPath)
 		case "PROD":
-			appEnvFileName = "./configs/.prod.env"
+			appEnvFileName = fmt.Sprintf("%s/configs/.prod.env", appPath)
 	}
 
 	err = godotenv.Overload(appEnvFileName)
@@ -46,6 +52,6 @@ func SetEnv() {
 	slog.Info(fmt.Sprintf("THIS_ENV = %s",  os.Getenv("THIS_ENV")))
 	slog.Info(fmt.Sprintf("HTTP_PORT = %s",  os.Getenv("HTTP_PORT")))
 	slog.Info(fmt.Sprintf("DB_DIALECT = %s",  os.Getenv("DB_DIALECT")))
+	os.Setenv("DB_NAME", fmt.Sprintf("%s/%s", appPath, os.Getenv("DB_NAME")))
 	slog.Info(fmt.Sprintf("DB_NAME = %s",  os.Getenv("DB_NAME")))
-
 }

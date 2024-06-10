@@ -2,12 +2,15 @@ package person
 
 import (
 	"fmt"
+	"log/slog"
+	"strings"
 
-	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
-	"github.com/RodrigoMattosoSilveira/gradeit/models"
 	validation "github.com/RodrigoMattosoSilveira/gradeit/controllers/validation"
+	"github.com/RodrigoMattosoSilveira/gradeit/models"
+	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
 
 	"github.com/gin-gonic/gin"
+	"github.com/Jeffail/gabs"
 )
 
 type controller struct {
@@ -22,34 +25,43 @@ func NewPerson(s person.PersonSvcInt) controller {
 }
 
 func (c controller) Create(ctx *gin.Context) {
-	errors := make([]string, 0)
+	valid := true
 	var body models.PersonCreate
+	jsonObj := gabs.New()
+
 
 	contentType := ctx.Request.Header.Get("Content-Type")
 	if (contentType == "application/json") {
 		if err := ctx.ShouldBindJSON(&body); err != nil {
 			if err := ctx.ShouldBind(&body); err != nil {
-				errors = append(errors, err.Error())
-				ctx.JSON(422, gin.H{"error": errors})
+				slog.Error("PersonCreate: Unable to determine the request content")
+				ctx.JSON(422, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
 				return
 			}
 		}
 	}
-	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
+	person := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
 
 	if !ValidEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
+		valid = false
+		jsonObj.Set(false, "Email", "Valid")
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
 	}
 
-	if !UniqueEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
+	if valid && !UniqueEmail(person.Email) {
+		valid = false
+		jsonObj.Set(false, "Email", "Unique")
+		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
 	}
 
 	if !ValidPassword(person.Password) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
+		valid = false
+		jsonObj.Set(false, "Password", "Valid")
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
 	}
-	if len(errors) > 0 {
-		ctx.JSON(422, gin.H{"error": errors})
+
+	if !valid {
+		ctx.JSON(422, gin.H{"error": jsonObj.String()})
 		return
 	}
 	c.services.Create(ctx, person)

@@ -3,6 +3,7 @@ package person
 import (
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/RodrigoMattosoSilveira/gradeit/configs"
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
@@ -31,6 +32,7 @@ func ValidEmail(email string) bool {
 // TODO Figure out a way to unit test it
 func UniqueEmail(email string) bool {
 	var person models.Person
+	email = strings.ToLower(email)
 	result := configs.DB.Where("email = ?", email).First(&person)
 	return  result.Error != nil
 }

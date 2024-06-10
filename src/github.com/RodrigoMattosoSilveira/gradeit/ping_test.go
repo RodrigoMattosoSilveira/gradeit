@@ -6,11 +6,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/RodrigoMattosoSilveira/gradeit/configs"
+	"github.com/RodrigoMattosoSilveira/gradeit/routes"
 )
 
 func TestPingRoute(t *testing.T) {
-	router := GetRouter()
-	RoutesPing(router)
+	router := configs.GetRouter()
+	routes.RoutesPing(router)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/ping", nil)
