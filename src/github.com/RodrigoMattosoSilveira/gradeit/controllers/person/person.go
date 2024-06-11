@@ -9,7 +9,6 @@ import (
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
 	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
 
-	"github.com/Jeffail/gabs"
 	"github.com/gin-gonic/gin"
 )
 
@@ -27,8 +26,7 @@ func NewPerson(s person.PersonSvcInt) controller {
 func (c controller) Create(ctx *gin.Context) {
 	valid := true
 	var body models.PersonCreate
-	jsonObj := gabs.New()
-
+	var personValidation models.PersonValidation
 
 	contentType := ctx.Request.Header.Get("Content-Type")
 	if (contentType == "application/json") {
@@ -44,24 +42,24 @@ func (c controller) Create(ctx *gin.Context) {
 
 	if !ValidEmail(person.Email) {
 		valid = false
-		jsonObj.Set(false, "Email", "Valid")
+		personValidation.InValidEmail = true
 		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
 	}
 
 	if valid && !UniqueEmail(person.Email) {
 		valid = false
-		jsonObj.Set(false, "Email", "Unique")
+		personValidation.EmailExists = true
 		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
 	}
 
 	if !ValidPassword(person.Password) {
 		valid = false
-		jsonObj.Set(false, "Password", "Valid")
+		personValidation.InValidPassword = true
 		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
 	}
 
 	if !valid {
-		ctx.JSON(422, gin.H{"error": jsonObj.String()})
+		ctx.JSON(422, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Create(ctx, person)

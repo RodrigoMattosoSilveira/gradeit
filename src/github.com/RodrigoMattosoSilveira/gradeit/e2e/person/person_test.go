@@ -4,16 +4,19 @@ import (
 	// "net/http"
 	// "encoding/json"
 	// "fmt"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	// "github.com/stretchr/testify/assert"
 	"github.com/RodrigoMattosoSilveira/gradeit/configs"
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
 	"github.com/RodrigoMattosoSilveira/gradeit/routes"
-	// "github.com/RodrigoMattosoSilveira/gradeit/models"
+
+	"github.com/Jeffail/gabs"
 )
 func TestPerson(t *testing.T) {
 	// setup logic
@@ -31,7 +34,18 @@ func TestPerson(t *testing.T) {
 		router.ServeHTTP(recorder, req)
 		if recorder.Code != 422 {
 			t.Error("Expected 422, got ", recorder.Code)
-		  }			  
+		}		
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidEmail, ok := jsonParsed.Path("error.invalid_email").Data().(bool) 
+		if !ok {
+			panic("Expected E2E CreateInvalidEmail parsing error")
+		} 
+	 	if !invalidEmail {
+			t.Error("Expected Person email to be invalid, got ", invalidEmail)
+		} 
 	})
 	t.Run("CreateExistingEmail", func(t *testing.T) { 
 
@@ -44,10 +58,19 @@ func TestPerson(t *testing.T) {
 		if recorder.Code != 422 {
 			t.Error("Expected 422, got ", recorder.Code)
 		  }
-				  
-	})
-	t.Run("CreateValidPassword", func(t *testing.T) { 
-
+		  jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		  if err != nil {
+			  panic(err)
+		  }
+		  emailExists, ok := jsonParsed.Path("error.email_exists").Data().(bool) 
+		  if !ok {
+			  t.Error("Expected valid error, got ", "bad error")
+		  } 
+		  if !emailExists {
+			  t.Error("Expected Person email to exist", emailExists)
+		  }
+	  })
+	t.Run("CreateInvalidPassword", func(t *testing.T) { 
 		recorder := httptest.NewRecorder()
 		personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail", "Password": "Nei"}`
 		req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
@@ -57,9 +80,22 @@ func TestPerson(t *testing.T) {
 		if recorder.Code != 422 {
 			t.Error("Expected 422, got ", recorder.Code)
 		  }			  
-				  
-	})
+		  jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		  if err != nil {
+			  panic(err)
+		  }
+		  invalidPassword, ok := jsonParsed.Path("error.invalid_password").Data().(bool) 
+		  if !ok {
+			  panic("Expected E2E CreateInvalidPassword parsing error")
+		  } 
+		   if !invalidPassword {
+			  t.Error("Expected Person password to be invalid, got ", invalidPassword)
+		  } 
+	  })
 	t.Run("CreateValidPerson", func(t *testing.T) { 
+		personName := "Neils Bohr"
+		personEmail := "Neils.Bohr@gmail.com"
+		personPassword := "Neils.Bohr123"
 
 		recorder := httptest.NewRecorder()
 		personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail.com", "Password": "Neils.Bohr123"}`
@@ -69,8 +105,52 @@ func TestPerson(t *testing.T) {
 		router.ServeHTTP(recorder, req)
 		if recorder.Code != 200 {
 			t.Error("Expected 200, got ", recorder.Code)
-		  }
-				  
+		}
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		exists := jsonParsed.ExistsP("data")
+		if !exists  {
+			t.Error("Expected Person data, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.Name")
+		if !exists  {
+			t.Error("Expected Person data.Name, dit not get ", "it")
+		}
+		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if returnedPersonName != personName {
+			t.Error(fmt.Sprintf("Expected new Person Name to be %s, got %s", personEmail, returnedPersonName))
+		}
+		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if  returnedPersonEmail !=  strings.ToLower(personEmail) {
+			t.Error(fmt.Sprintf("Expected new Person Email to be %s, got %s", personEmail, returnedPersonEmail))
+		}
+		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if returnedPersonPassword != personPassword {
+			t.Error(fmt.Sprintf("Expected new Person Password to be %s, got%s", personPassword, returnedPersonPassword))
+		}
+		exists = jsonParsed.ExistsP("data.CreatedAt")
+		if !exists  {
+			t.Error("Expected Person CreatedAt, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.UpdatedAt")
+		if !exists  {
+			t.Error("Expected Person UpdatedAt, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.DeletedAt")
+		if !exists  {
+			t.Error("Expected Person DeletedAt, dit not get ", "it")
+		}
 	})
 
 	// tear down logic

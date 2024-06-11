@@ -22,3 +22,9 @@ type Person struct {
 	Email     string `gorm:"unique"`
 	Password  string
 }
+
+type PersonValidation struct {
+	InValidEmail bool `json:"invalid_email,omitempty"`
+	EmailExists bool `json:"email_exists,omitempty"`
+	InValidPassword bool `json:"invalid_password,omitempty"`
+}
