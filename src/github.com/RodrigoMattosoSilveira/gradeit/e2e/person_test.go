@@ -11,6 +11,7 @@ import (
 
 	// "github.com/stretchr/testify/assert"
 	"github.com/RodrigoMattosoSilveira/gradeit/configs"
+	"github.com/RodrigoMattosoSilveira/gradeit/models"
 	"github.com/RodrigoMattosoSilveira/gradeit/routes"
 	// "github.com/RodrigoMattosoSilveira/gradeit/models"
 )
@@ -19,10 +20,23 @@ func TestPerson(t *testing.T) {
 	configs.Config()
 	router := configs.GetRouter()
 	routes.RoutesPerson(router)
+	setupPersonTable()
 	t.Run("CreateInvalidEmail", func(t *testing.T) { 
 
 		recorder := httptest.NewRecorder()
-		personString := `{"Name": " Albert Einstein", "Email": "Einstein@mail", "Password": "Einstein123abc"}`
+		personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail", "Password": "Neils.Bohr123abc"}`
+		req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
+		req.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != 422 {
+			t.Error("Expected 422, got ", recorder.Code)
+		  }			  
+	})
+	t.Run("CreateExistingEmail", func(t *testing.T) { 
+
+		recorder := httptest.NewRecorder()
+		personString := `{"Name": "Albert Einstein", "Email": "Albert.Einstein@gmail.com", "Password": "Albert.Einstein123"}`
 		req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
 		req.Header.Set("Content-Type", "application/json")
 
@@ -32,21 +46,63 @@ func TestPerson(t *testing.T) {
 		  }
 				  
 	})
-	t.Run("CreateUniqueEmail", func(t *testing.T) { 
+	t.Run("CreateValidPassword", func(t *testing.T) { 
 
 		recorder := httptest.NewRecorder()
-		personString := `{"Name": " Albert Einstein", "Email": "Bohr@mail.com", "Password": "Einstein123abc"}`
+		personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail", "Password": "Nei"}`
 		req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
 		req.Header.Set("Content-Type", "application/json")
 
 		router.ServeHTTP(recorder, req)
 		if recorder.Code != 422 {
 			t.Error("Expected 422, got ", recorder.Code)
+		  }			  
+				  
+	})
+	t.Run("CreateValidPerson", func(t *testing.T) { 
+
+		recorder := httptest.NewRecorder()
+		personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail.com", "Password": "Neils.Bohr123"}`
+		req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
+		req.Header.Set("Content-Type", "application/json")
+
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != 200 {
+			t.Error("Expected 200, got ", recorder.Code)
 		  }
 				  
 	})
 
 	// tear down logic
+}
+
+func setupPersonTable() {
+	// Clean up the table
+	result := configs.DB.Exec("DELETE FROM people")
+	if result.Error != nil {
+		panic("unable to empty the person table")
+	}
+
+	// Insert two records
+	person := models.Person {
+		Name: "Albert Einstein",
+		Email:  strings.ToLower("Albert.Einstein@gmail.com"),
+		Password: "Albert.Einstein123",
+	}
+	result = configs.DB.Create(&person)
+	if result.Error != nil {
+		panic("unable to add record to person table")
+	}
+
+	person = models.Person{
+		Name: "Francis Bacon",
+		Email: strings.ToLower("Francis.Bacon@gmail.com"),
+		Password: "Francis.Bacon123",
+	}
+	result = configs.DB.Create(&person)
+	if result.Error != nil {
+		panic("unable to add record to person table")
+	}
 }
 
 // //  Inspired by

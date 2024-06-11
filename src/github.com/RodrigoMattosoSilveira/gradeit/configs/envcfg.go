@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"slices"
 
 	"github.com/joho/godotenv"
 )
@@ -21,11 +22,12 @@ func SetEnv() {
 		panic(fmt.Sprintf("SetEnv: error loading %s file", ".env"))
 	}
 
-
+	environments := []string{"DEV", "QA", "E2E", "STAGE", "PROD"}
 	appEnv := os.Getenv("APP_ENV")
-	if appEnv == "" {
-		appEnv = "DEV"
+	if !slices.Contains(environments, appEnv) {
+		panic(fmt.Sprintf("SetEnv: invalid applicatio environment %s", appEnv))
 	}
+
 	var appEnvFileName string
 	switch appEnv {
 		case "DEV":
@@ -49,7 +51,7 @@ func SetEnv() {
 	// without setting the environment
 	//
 	slog.Info("SetEnv: environment setup successfully")
-	slog.Info(fmt.Sprintf("THIS_ENV = %s",  os.Getenv("THIS_ENV")))
+	slog.Info(fmt.Sprintf("THIS_ENV = %s",  os.Getenv("APP_ENV")))
 	slog.Info(fmt.Sprintf("HTTP_PORT = %s",  os.Getenv("HTTP_PORT")))
 	slog.Info(fmt.Sprintf("DB_DIALECT = %s",  os.Getenv("DB_DIALECT")))
 	os.Setenv("DB_NAME", fmt.Sprintf("%s/%s", appPath, os.Getenv("DB_NAME")))

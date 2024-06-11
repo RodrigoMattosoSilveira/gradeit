@@ -9,8 +9,8 @@ import (
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
 	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
 
-	"github.com/gin-gonic/gin"
 	"github.com/Jeffail/gabs"
+	"github.com/gin-gonic/gin"
 )
 
 type controller struct {
