@@ -24,12 +24,12 @@ func NewPerson(s person.PersonSvcInt) controller {
 }
 
 func (c controller) Create(ctx *gin.Context) {
-	valid := true
 	var body models.PersonCreate
+	valid := true
 	var personValidation models.PersonValidation
 
 	contentType := ctx.Request.Header.Get("Content-Type")
-	if (contentType == "application/json") {
+	if contentType == "application/json" {
 		if err := ctx.ShouldBindJSON(&body); err != nil {
 			if err := ctx.ShouldBind(&body); err != nil {
 				slog.Error("PersonCreate: Unable to determine the request content")
@@ -42,7 +42,7 @@ func (c controller) Create(ctx *gin.Context) {
 
 	if !ValidEmail(person.Email) {
 		valid = false
-		personValidation.InValidEmail = true
+		personValidation.InvalidEmail = true
 		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
 	}
 
@@ -54,7 +54,7 @@ func (c controller) Create(ctx *gin.Context) {
 
 	if !ValidPassword(person.Password) {
 		valid = false
-		personValidation.InValidPassword = true
+		personValidation.InvalidPassword = true
 		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
 	}
 
@@ -70,91 +70,113 @@ func (c controller) GetAll(ctx *gin.Context) {
 }
 
 func (c controller) GetByID(ctx *gin.Context) {
-	errors := make([]string, 0)
+	valid := true
+	var personValidation models.PersonValidation
 
-	err, idParm := validation.ParseIdParm(ctx)
+	idParm, err := validation.ParseIdParm(ctx)
 	if !err {
-		errors = append(errors, "Person GetById, unable to parse id parameter")
+		valid = false
+		personValidation.ParmIdInexistent = true
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("GetByID %d: invalid id", id))
+		valid = false
+		personValidation.InvalidParmId = true
 	}
 
-	if !PersonInDB(uint64(id)) {
-		errors = append(errors, fmt.Sprintf("Person GetByID %d: person not in db", id))
-	}
-
-	if len(errors) > 0 {
-		ctx.JSON(422, gin.H{"error": errors})
+	if !valid {
+		ctx.JSON(422, gin.H{`error`: personValidation})
 		return
 	}
-
 	c.services.GetByID(ctx, id)
 }
 
 func (c controller) Update(ctx *gin.Context) {
 	var body models.PersonUpdate
-	errors := make([]string, 0)
+	valid := true
+	var personValidation models.PersonValidation
 
-	valid, idParm := validation.ParseIdParm(ctx)
-	if !valid {
-		errors = append(errors, "Person GetById,unable to parse id parameter")
+	contentType := ctx.Request.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			if err := ctx.ShouldBind(&body); err != nil {
+				slog.Error("PersonCreate: Unable to determine the request content")
+				ctx.JSON(422, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
+				return
+			}
+		}
 	}
+	person := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
 
-	if err := ctx.ShouldBind(&body); err != nil {
-		errors = append(errors, err.Error())
+	idParm, err := validation.ParseIdParm(ctx)
+	if !err {
+		valid = false
+		personValidation.ParmIdInexistent = true
 	}
-	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid id", person.ID))
+		valid = false
+		personValidation.InvalidParmId = true
 	} else {
 		person.ID = id
 	}
 
 	if !PersonInDB(uint64(person.ID)) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %s: person not in db", idParm))
+		valid = false
+		personValidation.PersonNotInDB = true
 	}
 
-	if person.Email != "" && !ValidEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid email = %s", person.ID, person.Email))
+	if !ValidEmail(person.Email) {
+		valid = false
+		personValidation.InvalidEmail = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
 	}
 
-	if person.Password != "" && ValidPassword(person.Password) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid password = %s", person.ID, person.Password))
+	if valid && !UniqueEmail(person.Email) {
+		valid = false
+		personValidation.EmailExists = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
 	}
-	if len(errors) > 0 {
-		ctx.JSON(422, gin.H{"error": errors})
+
+	if !ValidPassword(person.Password) {
+		valid = false
+		personValidation.InvalidPassword = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
+	}
+
+	if !valid {
+		ctx.JSON(422, gin.H{`error`: personValidation})
 		return
 	}
-
 	c.services.Update(ctx, person)
 }
 
 func (c controller) Delete(ctx *gin.Context) {
-	errors := make([]string, 0)
+	valid := true
+	var personValidation models.PersonValidation
 
-	valid, idParm := validation.ParseIdParm(ctx)
-	if !valid {
-		errors = append(errors, "Person Delete, unable to parse id parameter")
+	idParm, err := validation.ParseIdParm(ctx)
+	if !err {
+		valid = false
+		personValidation.ParmIdInexistent = true
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("Delete %d: invalid id", id))
+		valid = false
+		personValidation.InvalidParmId = true
 	}
 
-	if !PersonInDB(uint64(id)) {
-		errors = append(errors, fmt.Sprintf("Delete %s: person not in db", idParm))
+	if !PersonInDB(id) {
+		valid = false
+		personValidation.PersonNotInDB = true
 	}
 
-	if len(errors) > 0 {
-		ctx.JSON(422, gin.H{"error": errors})
+	if !valid {
+		ctx.JSON(422, gin.H{`error`: personValidation})
 		return
 	}
-
 	c.services.Delete(ctx, id)
 }

@@ -77,7 +77,7 @@ func (c controller) Update(ctx *gin.Context) {
 	assignment := models.Assignment{ID: uint64(body.PersonId), Description: body.Description, Due: body.Due}
 
 	// Retrieve the ID of the assignment to be updated
-	err, idParm := validation.ParseIdParm(ctx)
+	idParm, err := validation.ParseIdParm(ctx)
 	if !err  {
 		errors = append(errors, "Assignment Update, unable to parse  assignment ID")
 	}
