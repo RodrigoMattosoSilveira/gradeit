@@ -52,7 +52,7 @@ func (repo repository) GetByID(ctx *gin.Context, id uint64) {
 
 	result := configs.DB.First(&person, id)
 	if result.Error != nil {
-		ctx.JSON(500, gin.H{"error": result.Error})
+		ctx.JSON(404, gin.H{"error": result.Error})
 		return
 	}
 

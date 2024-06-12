@@ -6,6 +6,7 @@ import (
 	// "fmt"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -127,18 +128,18 @@ func TestPerson(t *testing.T) {
 		if recorder.Code != 422 {
 			t.Error("Expected 422, got ", recorder.Code)
 		  }			  
-		  jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
-		  if err != nil {
-			  panic(err)
-		  }
-		  invalidPassword, ok := jsonParsed.Path("error.invalid_password").Data().(bool) 
-		  if !ok {
-			  panic("Expected E2E CreateInvalidPassword parsing error")
-		  } 
-		   if !invalidPassword {
-			  t.Error("Expected Person password to be invalid, got ", invalidPassword)
-		  } 
-	  })
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidPassword, ok := jsonParsed.Path("error.invalid_password").Data().(bool) 
+		if !ok {
+			panic("Expected E2E CreateInvalidPassword parsing error")
+		} 
+		if !invalidPassword {
+			t.Error("Expected Person password to be invalid, got ", invalidPassword)
+		} 
+	})
 	t.Run("CreateValidPerson", func(t *testing.T) { 
 
 		// It is not easy to pass a structure to an HTTP call!	
@@ -201,6 +202,94 @@ func TestPerson(t *testing.T) {
 	})
 
 	t.Run("GetPersonValidId", func(t *testing.T) { 
+
+		// It is not easy to pass a structure to an HTTP call!	
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != 200 {
+			t.Error("Expected 200, got ", recorder.Code)
+		}
+
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		// We got the right name
+		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if returnedPersonName != albertEinstein.Name {
+			t.Errorf("Expected new Person Name to be %s, got %s", albertEinstein.Name, returnedPersonName)
+		}
+		// We got the right email
+		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if  returnedPersonEmail !=  strings.ToLower(albertEinstein.Email) {
+			t.Errorf("Expected new Person Email to be %s, got %s", strings.ToLower(albertEinstein.Email), returnedPersonEmail)
+		}
+		// We got the right password
+		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string) 
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		} 
+		if returnedPersonPassword != albertEinstein.Password {
+			t.Errorf("Expected new Person Password to be %s, got%s", albertEinstein.Password, returnedPersonPassword)
+		}
+	})
+
+	t.Run("GetPersonInvalidParmId", func(t *testing.T) { 
+
+		// It is not easy to pass a structure to an HTTP call!	
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != 422 {
+			t.Error("Expected 422, got ", recorder.Code)
+		}
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool) 
+		if !ok {
+			panic("GetId Unable to parse the error")
+		} 
+		if !invalidPassword {
+			t.Error("Person GetId Expected Invalid Parameter Id error, got ", "something else")
+		} 
+	})
+
+	t.Run("GetPersonIdNotInDb", func(t *testing.T) { 
+
+		// It is not easy to pass a structure to an HTTP call!	
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		var id uint64
+		if (albertEinstein.ID == 1) {
+			id = 100
+		} else {
+			id = albertEinstein.ID -1
+		}
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", id), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != 404 {
+			t.Error("Expected 404, got ", recorder.Code)
+		}
 	})
 
 	// tear down logic
