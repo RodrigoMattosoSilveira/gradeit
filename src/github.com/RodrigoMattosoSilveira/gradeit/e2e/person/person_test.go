@@ -31,11 +31,11 @@ var francisBacon = models.Person {
 	Password: "Francis.Bacon123",
 }
 
-var antoineLavoisier = models.Person {
-	Name: "Antoine Lavoisier",
-	Email:  strings.ToLower("Antoine.Lavoisier@gmail.com"),
-	Password: "Antoine.Lavoisier123",
-}
+// var antoineLavoisier = models.PersonCreate {
+// 	Name: "Antoine Lavoisier",
+// 	Email:  strings.ToLower("Antoine.Lavoisier@gmail.com"),
+// 	Password: "Antoine.Lavoisier123",
+// }
 
 var neilsBohr = models.Person {
 	Name: "Neils Bohr",
@@ -43,6 +43,9 @@ var neilsBohr = models.Person {
 	Password: "Neils.Bohr123",
 }
 
+//  Inspired by
+// // https://blog.marcnuri.com/go-testing-gin-gonic-with-httptest
+// 
 func TestPerson(t *testing.T) {
 	// setup logic
 	configs.Config()
@@ -55,11 +58,11 @@ func TestPerson(t *testing.T) {
 		// req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
 
 		// Passing a structure to an HTTP call is tricky!	
-		neilsBohrWork := neilsBohr
-		neilsBohrWork.Email =  strings.ToLower("Neils.Bohrn@gm")
-		reqBodyBytes := new(bytes.Buffer)
-		json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-
+		// neilsBohrWork := neilsBohr
+		// neilsBohrWork.Email =  strings.ToLower("Neils.Bohrn@gm")
+		// reqBodyBytes := new(bytes.Buffer)
+		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
+		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "email", "bad@email")
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
@@ -83,11 +86,11 @@ func TestPerson(t *testing.T) {
 	t.Run("CreateExistingEmail", func(t *testing.T) { 
 
 		// Passing a structure to an HTTP call is tricky!	
-		neilsBohrWork := neilsBohr
-		neilsBohrWork.Email =  strings.ToLower("Albert.Einstein@gmail.com")
-		reqBodyBytes := new(bytes.Buffer)
-		json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-
+		// neilsBohrWork := neilsBohr
+		// neilsBohrWork.Email =  strings.ToLower("Albert.Einstein@gmail.com")
+		// reqBodyBytes := new(bytes.Buffer)
+		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
+		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "email", "Albert.Einstein@gmail.com")
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
@@ -111,11 +114,11 @@ func TestPerson(t *testing.T) {
 	t.Run("CreateInvalidPassword", func(t *testing.T) { 
 
 		// Passing a structure to an HTTP call is tricky!	
-		neilsBohrWork := neilsBohr
-		neilsBohrWork.Password = "Nei"
-		reqBodyBytes := new(bytes.Buffer)
-		json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-
+		// neilsBohrWork := neilsBohr
+		// neilsBohrWork.Password = "Nei"
+		// reqBodyBytes := new(bytes.Buffer)
+		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
+		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "password", "Nei")
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
@@ -203,6 +206,10 @@ func TestPerson(t *testing.T) {
 	// tear down logic
 }
 
+// Sets a person table for testing by deleting all records in it, and adding two new records to it
+// Input: 
+// Output: 
+//
 func setupPersonTable() {
 	// Clean up the table
 	result := configs.DB.Exec("DELETE FROM people")
@@ -222,176 +229,30 @@ func setupPersonTable() {
 	}
 }
 
-// //  Inspired by
-// // https://blog.marcnuri.com/go-testing-gin-gonic-with-httptest
-// //
-// func TestPersonCreateOK(t *testing.T) {
-// 	configs.Config()
-// 	router := configs.GetRouter()
-// 	routes.RoutesPerson(router)
+// Serializes a structure
+// Input: models.Person
+// Output: *bytes.Buffer
+// 
+func serializePerson(person models.Person) *bytes.Buffer {
+	reqBodyBytes := new(bytes.Buffer)
+	json.NewEncoder(reqBodyBytes).Encode(person)
+	return reqBodyBytes
+}
 
-
-// 	// Delete all records with the email of the record about to be inserted
-// 	configs.DB.Exec("DELETE FROM people WHERE email like 'Einstein123abc'")
-
-// 	person := models.PersonCreate {
-// 		Name: "Neils Bohr",
-// 		Email: "Bohr@mail.com",
-// 		Password: "Bohr123abc",
-// 	}
-
-// 	recorder := httptest.NewRecorder()
-// 	personString := `{"Name": " Albert Einstein", "Email": "Einstein@mail.com", "Password": "Einstein123abc"}`
-// 	req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
-// 	req.Header.Set("Content-Type", "application/json")
-
-//  	router.ServeHTTP(recorder, req)
-
-
-// 	t.Run("Returns 200 status code", func(t *testing.T) {
-// 		if recorder.Code != 200 {
-// 		  t.Error("Expected 200, got ", recorder.Code)
-// 		}
-// 	})
-
-// 	var personDataMap map[string]map[string]interface{}
-// 	err := json.Unmarshal([]byte(recorder.Body.Bytes()), &personDataMap)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	t.Run("Returns person with id = 1", func(t *testing.T) {
-// 		if _, isMapContainsKey := personDataMap["data"]["CreatedAt"]; isMapContainsKey {
-// 		//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected CreatedAt attribute, got no CreatedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["UpdatedAt"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected UpdatedAt attribute, got no CreatedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["DeletedAt"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected DeletedAt attribute, got no DeletedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["Name"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected Name attribute, got no Name attribute"))
-// 		}
-// 		if personDataMap["data"]["Name"] != person.Name {
-// 			t.Error(fmt.Errorf("Expected Person Name: %s, got %s", person.Name, personDataMap["Name"]))
-// 		}
-// 		if personDataMap["data"]["Email"] != person.Email {
-// 			t.Error(fmt.Errorf("Expected Persob Email: %s, got %s", person.Email, personDataMap["Email"]))
-// 		}
-// 		if personDataMap["data"]["Password"] != person.Password {
-// 			t.Error(fmt.Errorf("Expected Person Password: %s, got %s", person.Password, personDataMap["Password"]))
-// 		}
-// 	})
-// }
-
-// func TestPersonCreateEmailExists(t *testing.T) {
-// 	configs.Config()
-// 	router := configs.GetRouter()
-// 	routes.RoutesPerson(router)
-
-
-// 	recorder := httptest.NewRecorder()
-// 	personString := `{"Name": "Richard Feyman", "Email": "Bohr@mail.com", "Password": "Feyman123abc"}`
-// 	req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
-// 	req.Header.Set("Content-Type", "application/json")
-
-//  	router.ServeHTTP(recorder, req)
-
-
-// 	t.Run("Returns 200 status code", func(t *testing.T) {
-// 		if recorder.Code != 422 {
-// 		  t.Error("Expected 422, got ", recorder.Code)
-// 		}
-// 	})
-// }
-
-// func TestPersonGetIdOK(t *testing.T) {
-// 	configs.Config()
-// 	router := configs.GetRouter()
-// 	routes.RoutesPerson(router)
-
-// 	person := models.Person {
-// 		Name: "Albert Einstein",
-// 		Email: "einstein@gmail.com",
-// 		Password: "einstein124",
-// 	}
-
-// 	recorder := httptest.NewRecorder()
-// 	router.ServeHTTP(recorder, httptest.NewRequest("GET", "/person/1", nil))
-
-// 	t.Run("Returns 200 status code", func(t *testing.T) {
-// 		if recorder.Code != 200 {
-// 		  t.Error("Expected 200, got ", recorder.Code)
-// 		}
-// 	})
-
-// 	var personDataMap map[string]map[string]interface{}
-// 	err := json.Unmarshal([]byte(recorder.Body.Bytes()), &personDataMap)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	t.Run("Returns person with id = 1", func(t *testing.T) {
-// 		if _, isMapContainsKey := personDataMap["data"]["CreatedAt"]; isMapContainsKey {
-// 		//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected CreatedAt attribute, got no CreatedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["UpdatedAt"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected UpdatedAt attribute, got no CreatedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["DeletedAt"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected DeletedAt attribute, got no DeletedAt attribute"))
-// 		}
-// 		if _, isMapContainsKey := personDataMap["data"]["Name"]; isMapContainsKey {
-// 			//key exist
-// 		} else {
-// 			//key does not exist
-// 			t.Error(fmt.Errorf("Expected Name attribute, got no Name attribute"))
-// 		}
-// 		if personDataMap["data"]["Name"] != person.Name {
-// 			t.Error(fmt.Errorf("Expected Person Name: %s, got %s", person.Name, personDataMap["Name"]))
-// 		}
-// 		if personDataMap["data"]["Email"] != person.Email {
-// 			t.Error(fmt.Errorf("Expected Persob Email: %s, got %s", person.Email, personDataMap["Email"]))
-// 		}
-// 		if personDataMap["data"]["Password"] != person.Password {
-// 			t.Error(fmt.Errorf("Expected Person Password: %s, got %s", person.Password, personDataMap["Password"]))
-// 		}
-// 	})
-// }
-
-// func TestPersonGetIdNotOK(t *testing.T) {
-// 	configs.Config()
-// 	router := configs.GetRouter()
-// 	routes.RoutesPerson(router)
-
-// 	recorder := httptest.NewRecorder()
-// 	router.ServeHTTP(recorder, httptest.NewRequest("GET", "/person/10000", nil))
-
-// 	t.Run("Returns 200 status code", func(t *testing.T) {
-// 		if recorder.Code != 422 {
-// 		  t.Error("Expected 200, got ", recorder.Code)
-// 		}
-// 	})
-// }
+// Creates a copy of Person structure, changes the attribute to be attribute value, and serializes the new structure
+// Input: models.Person, string, string
+// Output: *bytes.Buffer
+// 
+func getPersonWithInvalidAttributeSerialized(original models.Person, attribute string, attributeValue string) *bytes.Buffer {
+	invalidPerson := original
+	switch attribute {
+		case "email":
+			invalidPerson.Email = attributeValue
+		case "name":
+			invalidPerson.Name = attributeValue
+		case "password":
+			invalidPerson.Password = attributeValue
+		default:	
+	}
+	return serializePerson(invalidPerson)
+}
