@@ -343,29 +343,3 @@ func setupPersonTable() {
 		panic("unable to add record to person table")
 	}
 }
-
-// Serializes a structure
-// Input: models.Person
-// Output: *bytes.Buffer
-func serializePerson(person models.Person) *bytes.Buffer {
-	reqBodyBytes := new(bytes.Buffer)
-	json.NewEncoder(reqBodyBytes).Encode(person)
-	return reqBodyBytes
-}
-
-// Creates a copy of Person structure, changes the attribute to be attribute value, and serializes the new structure
-// Input: models.Person, string, string
-// Output: *bytes.Buffer
-func getPersonWithInvalidAttributeSerialized(original models.Person, attribute string, attributeValue string) *bytes.Buffer {
-	invalidPerson := original
-	switch attribute {
-	case "email":
-		invalidPerson.Email = attributeValue
-	case "name":
-		invalidPerson.Name = attributeValue
-	case "password":
-		invalidPerson.Password = attributeValue
-	default:
-	}
-	return serializePerson(invalidPerson)
-}
