@@ -20,15 +20,15 @@ import (
 	"github.com/Jeffail/gabs"
 )
 
-var albertEinstein = models.Person {
-	Name: "Albert Einstein",
-	Email:  strings.ToLower("Albert.Einstein@gmail.com"),
+var albertEinstein = models.Person{
+	Name:     "Albert Einstein",
+	Email:    strings.ToLower("Albert.Einstein@gmail.com"),
 	Password: "Albert.Einstein123",
 }
 
-var francisBacon = models.Person {
-	Name: "Francis Bacon",
-	Email:  strings.ToLower("Francis.Bacon@gmail.com"),
+var francisBacon = models.Person{
+	Name:     "Francis Bacon",
+	Email:    strings.ToLower("Francis.Bacon@gmail.com"),
 	Password: "Francis.Bacon123",
 }
 
@@ -38,257 +38,284 @@ var francisBacon = models.Person {
 // 	Password: "Antoine.Lavoisier123",
 // }
 
-var neilsBohr = models.Person {
-	Name: "Neils Bohr",
-	Email:  strings.ToLower("Neils.Bohrn@gmail.com"),
+var neilsBohr = models.Person{
+	Name:     "Neils Bohr",
+	Email:    strings.ToLower("Neils.Bohrn@gmail.com"),
 	Password: "Neils.Bohr123",
 }
 
-//  Inspired by
+//	Inspired by
+//
 // // https://blog.marcnuri.com/go-testing-gin-gonic-with-httptest
-// 
 func TestPerson(t *testing.T) {
 	// setup logic
 	configs.Config()
 	router := configs.GetRouter()
 	routes.RoutesPerson(router)
 	setupPersonTable()
-	t.Run("CreateInvalidEmail", func(t *testing.T) { 
+	t.Run("CreateInvalidEmail", func(t *testing.T) {
 
-		// personString := `{"Name": "Neils Bohr", "Email": "Neils.Bohr@gmail", "Password": "Neils.Bohr123abc"}`
-		// req, _ := http.NewRequest("POST", "/person", strings.NewReader(personString))
+		// Set up a person structure with an invalid email
+		invalidPerson := neilsBohr
+		invalidPerson.Email = "bad@email"
 
-		// Passing a structure to an HTTP call is tricky!	
-		// neilsBohrWork := neilsBohr
-		// neilsBohrWork.Email =  strings.ToLower("Neils.Bohrn@gm")
-		// reqBodyBytes := new(bytes.Buffer)
-		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "email", "bad@email")
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(invalidPerson)
+
+		// Set up the HTTP call
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
 
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 422 {
-			t.Error("Expected 422, got ", recorder.Code)
-		}		
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
-		invalidEmail, ok := jsonParsed.Path("error.invalid_email").Data().(bool) 
+		invalidEmail, ok := jsonParsed.Path("error.invalid_email").Data().(bool)
 		if !ok {
 			panic("Expected E2E CreateInvalidEmail parsing error")
-		} 
-	 	if !invalidEmail {
+		}
+		if !invalidEmail {
 			t.Error("Expected Person email to be invalid, got ", invalidEmail)
-		} 
+		}
 	})
-	t.Run("CreateExistingEmail", func(t *testing.T) { 
+	t.Run("CreateExistingEmail", func(t *testing.T) {
 
-		// Passing a structure to an HTTP call is tricky!	
-		// neilsBohrWork := neilsBohr
-		// neilsBohrWork.Email =  strings.ToLower("Albert.Einstein@gmail.com")
-		// reqBodyBytes := new(bytes.Buffer)
-		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "email", "Albert.Einstein@gmail.com")
+		// Set up a person structure with an existing email
+		invalidPerson := neilsBohr
+		invalidPerson.Email = "Albert.Einstein@gmail.com"
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(invalidPerson)
+
+		// Set up the HTTP call
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
 
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 422 {
-			t.Error("Expected 422, got ", recorder.Code)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
 		}
+
+		// Validate the results
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
-		emailExists, ok := jsonParsed.Path("error.email_exists").Data().(bool) 
+		emailExists, ok := jsonParsed.Path("error.email_exists").Data().(bool)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
+		}
 		if !emailExists {
 			t.Error("Expected Person email to exist", emailExists)
 		}
-	 })
-	t.Run("CreateInvalidPassword", func(t *testing.T) { 
+	})
+	t.Run("CreateInvalidPassword", func(t *testing.T) {
 
-		// Passing a structure to an HTTP call is tricky!	
-		// neilsBohrWork := neilsBohr
-		// neilsBohrWork.Password = "Nei"
-		// reqBodyBytes := new(bytes.Buffer)
-		// json.NewEncoder(reqBodyBytes).Encode(neilsBohrWork)
-		reqBodyBytes := getPersonWithInvalidAttributeSerialized(neilsBohr, "password", "Nei")
+		// Set up a person structure with an invalid password
+		invalidPerson := neilsBohr
+		invalidPerson.Password = "Nei"
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(invalidPerson)
+
+		// Set up the HTTP call
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
 		recorder := httptest.NewRecorder()
 		req.Header.Set("Content-Type", "application/json")
 
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 422 {
-			t.Error("Expected 422, got ", recorder.Code)
-		  }			  
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
+		// Validate the results
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
-		invalidPassword, ok := jsonParsed.Path("error.invalid_password").Data().(bool) 
+		invalidPassword, ok := jsonParsed.Path("error.invalid_password").Data().(bool)
 		if !ok {
 			panic("Expected E2E CreateInvalidPassword parsing error")
-		} 
+		}
 		if !invalidPassword {
 			t.Error("Expected Person password to be invalid, got ", invalidPassword)
-		} 
+		}
 	})
-	t.Run("CreateValidPerson", func(t *testing.T) { 
+	t.Run("CreateValidPerson", func(t *testing.T) {
 
-		// It is not easy to pass a structure to an HTTP call!	
+		// Serialize the valid person structure
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(neilsBohr)
 
+		// Set up the HTTP call
 		req, _ := http.NewRequest("POST", "/person", reqBodyBytes)
-		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
+		req.Header.Set("Content-Type", "application/json")
+
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 200 {
-			t.Error("Expected 200, got ", recorder.Code)
+		if recorder.Code != http.StatusCreated {
+			t.Errorf("Expected %d got %d", http.StatusCreated, recorder.Code)
 		}
 
+		// Validate the results
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
 		exists := jsonParsed.ExistsP("data")
-		if !exists  {
+		if !exists {
 			t.Error("Expected Person data, dit not get ", "it")
 		}
 		exists = jsonParsed.ExistsP("data.Name")
-		if !exists  {
+		if !exists {
 			t.Error("Expected Person data.Name, dit not get ", "it")
 		}
-		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string) 
+		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
+		}
 		if returnedPersonName != neilsBohr.Name {
 			t.Errorf("Expected new Person Name to be %s, got %s", neilsBohr.Name, returnedPersonName)
 		}
-		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string) 
+		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
-		if  returnedPersonEmail !=  strings.ToLower(neilsBohr.Email) {
+		}
+		if returnedPersonEmail != strings.ToLower(neilsBohr.Email) {
 			t.Errorf("Expected new Person Email to be %s, got %s", strings.ToLower(neilsBohr.Email), returnedPersonEmail)
 		}
-		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string) 
+		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
+		}
 		if returnedPersonPassword != neilsBohr.Password {
 			t.Errorf("Expected new Person Password to be %s, got%s", neilsBohr.Password, returnedPersonPassword)
 		}
 		exists = jsonParsed.ExistsP("data.CreatedAt")
-		if !exists  {
+		if !exists {
 			t.Error("Expected Person CreatedAt, dit not get ", "it")
 		}
 		exists = jsonParsed.ExistsP("data.UpdatedAt")
-		if !exists  {
+		if !exists {
 			t.Error("Expected Person UpdatedAt, dit not get ", "it")
 		}
 		exists = jsonParsed.ExistsP("data.DeletedAt")
-		if !exists  {
+		if !exists {
 			t.Error("Expected Person DeletedAt, dit not get ", "it")
 		}
 	})
 
-	t.Run("GetPersonValidId", func(t *testing.T) { 
+	t.Run("GetPersonValidId", func(t *testing.T) {
 
-		// It is not easy to pass a structure to an HTTP call!	
+		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(" ")
 
+		// Set up the HTTP call with a valid ID
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 200 {
-			t.Error("Expected 200, got ", recorder.Code)
+		if recorder.Code !=  http.StatusOK {
+			t.Errorf("Expected %d got %d", http.StatusOK, recorder.Code)
 		}
 
+		// Validate the results
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
 		// We got the right name
-		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string) 
+		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
+		}
 		if returnedPersonName != albertEinstein.Name {
 			t.Errorf("Expected new Person Name to be %s, got %s", albertEinstein.Name, returnedPersonName)
 		}
 		// We got the right email
-		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string) 
+		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
-		if  returnedPersonEmail !=  strings.ToLower(albertEinstein.Email) {
+		}
+		if returnedPersonEmail != strings.ToLower(albertEinstein.Email) {
 			t.Errorf("Expected new Person Email to be %s, got %s", strings.ToLower(albertEinstein.Email), returnedPersonEmail)
 		}
 		// We got the right password
-		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string) 
+		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string)
 		if !ok {
 			t.Error("Expected valid error, got ", "bad error")
-		} 
+		}
 		if returnedPersonPassword != albertEinstein.Password {
 			t.Errorf("Expected new Person Password to be %s, got%s", albertEinstein.Password, returnedPersonPassword)
 		}
 	})
 
-	t.Run("GetPersonInvalidParmId", func(t *testing.T) { 
+	t.Run("GetPersonInvalidParmId", func(t *testing.T) {
 
-		// It is not easy to pass a structure to an HTTP call!	
+		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(" ")
 
+		// Set up the HTTP call with an invalid ID paramater
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 422 {
-			t.Error("Expected 422, got ", recorder.Code)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
 		}
+
+		// Validate the results
 		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
 		if err != nil {
 			panic(err)
 		}
-		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool) 
+		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool)
 		if !ok {
 			panic("GetId Unable to parse the error")
-		} 
+		}
 		if !invalidPassword {
 			t.Error("Person GetId Expected Invalid Parameter Id error, got ", "something else")
-		} 
+		}
 	})
 
-	t.Run("GetPersonIdNotInDb", func(t *testing.T) { 
+	t.Run("GetPersonIdNotInDb", func(t *testing.T) {
 
-		// It is not easy to pass a structure to an HTTP call!	
+		// It is not easy to pass a structure to an HTTP call!
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(" ")
 
 		var id uint64
-		if (albertEinstein.ID == 1) {
+		if albertEinstein.ID == 1 {
 			id = 100
 		} else {
-			id = albertEinstein.ID -1
+			id = albertEinstein.ID - 1
 		}
 		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", id), reqBodyBytes)
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, req)
-		if recorder.Code != 404 {
-			t.Error("Expected 404, got ", recorder.Code)
+		if recorder.Code != http.StatusNotFound {
+			t.Errorf("Expected %d got %d", http.StatusNotFound, recorder.Code)
 		}
 	})
 
@@ -296,9 +323,8 @@ func TestPerson(t *testing.T) {
 }
 
 // Sets a person table for testing by deleting all records in it, and adding two new records to it
-// Input: 
-// Output: 
-//
+// Input:
+// Output:
 func setupPersonTable() {
 	// Clean up the table
 	result := configs.DB.Exec("DELETE FROM people")
@@ -321,7 +347,6 @@ func setupPersonTable() {
 // Serializes a structure
 // Input: models.Person
 // Output: *bytes.Buffer
-// 
 func serializePerson(person models.Person) *bytes.Buffer {
 	reqBodyBytes := new(bytes.Buffer)
 	json.NewEncoder(reqBodyBytes).Encode(person)
@@ -331,17 +356,16 @@ func serializePerson(person models.Person) *bytes.Buffer {
 // Creates a copy of Person structure, changes the attribute to be attribute value, and serializes the new structure
 // Input: models.Person, string, string
 // Output: *bytes.Buffer
-// 
 func getPersonWithInvalidAttributeSerialized(original models.Person, attribute string, attributeValue string) *bytes.Buffer {
 	invalidPerson := original
 	switch attribute {
-		case "email":
-			invalidPerson.Email = attributeValue
-		case "name":
-			invalidPerson.Name = attributeValue
-		case "password":
-			invalidPerson.Password = attributeValue
-		default:	
+	case "email":
+		invalidPerson.Email = attributeValue
+	case "name":
+		invalidPerson.Name = attributeValue
+	case "password":
+		invalidPerson.Password = attributeValue
+	default:
 	}
 	return serializePerson(invalidPerson)
 }

@@ -3,6 +3,7 @@ package person
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	validation "github.com/RodrigoMattosoSilveira/gradeit/controllers/validation"
@@ -33,7 +34,7 @@ func (c controller) Create(ctx *gin.Context) {
 		if err := ctx.ShouldBindJSON(&body); err != nil {
 			if err := ctx.ShouldBind(&body); err != nil {
 				slog.Error("PersonCreate: Unable to determine the request content")
-				ctx.JSON(422, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
 				return
 			}
 		}
@@ -59,7 +60,7 @@ func (c controller) Create(ctx *gin.Context) {
 	}
 
 	if !valid {
-		ctx.JSON(422, gin.H{`error`: personValidation})
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Create(ctx, person)
@@ -86,7 +87,7 @@ func (c controller) GetByID(ctx *gin.Context) {
 	}
 
 	if !valid {
-		ctx.JSON(422, gin.H{`error`: personValidation})
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.GetByID(ctx, id)
@@ -102,7 +103,7 @@ func (c controller) Update(ctx *gin.Context) {
 		if err := ctx.ShouldBindJSON(&body); err != nil {
 			if err := ctx.ShouldBind(&body); err != nil {
 				slog.Error("PersonCreate: Unable to determine the request content")
-				ctx.JSON(422, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
 				return
 			}
 		}
@@ -147,7 +148,7 @@ func (c controller) Update(ctx *gin.Context) {
 	}
 
 	if !valid {
-		ctx.JSON(422, gin.H{`error`: personValidation})
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Update(ctx, person)
@@ -175,7 +176,7 @@ func (c controller) Delete(ctx *gin.Context) {
 	}
 
 	if !valid {
-		ctx.JSON(422, gin.H{`error`: personValidation})
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Delete(ctx, id)
