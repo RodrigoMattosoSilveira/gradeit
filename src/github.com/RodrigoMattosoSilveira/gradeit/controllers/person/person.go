@@ -1,47 +1,66 @@
-package controllers
+package person
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strings"
 
-	"github.com/RodrigoMattosoSilveira/gradeit/interfaces"
+	validation "github.com/RodrigoMattosoSilveira/gradeit/controllers/validation"
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
+	"github.com/RodrigoMattosoSilveira/gradeit/services/person"
 
 	"github.com/gin-gonic/gin"
 )
 
 type controller struct {
-	services interfaces.PersonCrudInt
+	services person.PersonSvcInt
 }
 
 // NewPerson - is a factory function to inject service in handler.
 //
 //nolint:revive // handler has to be unexported
-func NewPerson(s interfaces.PersonCrudInt) controller {
+func NewPerson(s person.PersonSvcInt) controller {
 	return controller{services: s}
 }
 
 func (c controller) Create(ctx *gin.Context) {
-	errors := make([]string, 0)
 	var body models.PersonCreate
+	valid := true
+	var personValidation models.PersonValidation
 
-	if err := ctx.ShouldBind(&body); err != nil {
-		errors = append(errors, err.Error())
+	contentType := ctx.Request.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			if err := ctx.ShouldBind(&body); err != nil {
+				slog.Error("PersonCreate: Unable to determine the request content")
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
+				return
+			}
+		}
 	}
-	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
+	person := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
 
 	if !ValidEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
+		valid = false
+		personValidation.InvalidEmail = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
 	}
 
-	if !UniqueEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
+	if valid && !UniqueEmail(person.Email) {
+		valid = false
+		personValidation.EmailExists = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
 	}
 
 	if !ValidPassword(person.Password) {
-		errors = append(errors, fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
+		valid = false
+		personValidation.InvalidPassword = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
 	}
-	if  len(errors) > 0 {
-		ctx.JSON(422, gin.H{"error": errors})
+
+	if !valid {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Create(ctx, person)
@@ -52,92 +71,135 @@ func (c controller) GetAll(ctx *gin.Context) {
 }
 
 func (c controller) GetByID(ctx *gin.Context) {
-	errors := make([]string, 0)
+	valid := true
+	var personValidation models.PersonValidation
 
-	err, idParm := ParseIdParm(ctx )
-	if !err  {
-		errors = append(errors, "Person GetById, unable to parse id parameter")
+	idParm, err := validation.ParseIdParm(ctx)
+	if !err {
+		valid = false
+		personValidation.ParmIdInexistent = true
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("GetByID %d: invalid id", id))
+		valid = false
+		personValidation.InvalidParmId = true
 	}
 
-
-	if !PersonInDB(uint64(id)) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: person not in db", id))
-	}
-
-	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+	if !valid {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
-
 	c.services.GetByID(ctx, id)
 }
 
 func (c controller) Update(ctx *gin.Context) {
 	var body models.PersonUpdate
-	errors := make([]string, 0)
+	valid := true
+	var personValidation models.PersonValidation
 
-	valid, idParm := ParseIdParm(ctx )
-	if !valid  {
-		errors = append(errors, "Person GetById,unable to parse id parameter")
+	contentType := ctx.Request.Header.Get("Content-Type")
+	if contentType == "application/json" {
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			if err := ctx.ShouldBind(&body); err != nil {
+				slog.Error("PersonCreate: Unable to determine the request content")
+				ctx.JSON(http.StatusUnprocessableEntity, gin.H{"error": "PersonCreate: Unable to determine the request content-type"})
+				return
+			}
+		}
 	}
+	personUpateData := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
 
-	if err := ctx.ShouldBind(&body); err != nil {
-		errors = append(errors, err.Error())
-	}
-	person := models.Person{Name: body.Name, Email: body.Email, Password: body.Password}
+	// Update approach
+	// - Ensure at least one attribute is submtied for update
+	// - Ensure that the person ID is valid, and there is a person with the ID in the database
+	// - Validate the remaining attributes
 
-	id, valid := ValidIdParm(idParm)
-	if !valid {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid id", person.ID))
-	} else {
-		person.ID = id
-	}
-
-	if !PersonInDB(uint64(person.ID)) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %s: person not in db", idParm))
-	}
-	
-	if person.Email !="" && !ValidEmail(person.Email) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid email = %s", person.ID, person.Email))
-	}
-
-	if person.Password !="" && !ValidPassword(person.Password) {
-		errors = append(errors, fmt.Sprintf("PersonUpdate %d: invalid password = %s", person.ID, person.Password))
-	}
-	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+	// At least one attribute must be submitted for update
+	if personUpateData.Name == "" && personUpateData.Email == "" && personUpateData.Password == "" {
+		personValidation.NoUpdateAttributes = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
 
-	c.services.Update(ctx, person)
+	// Ensure that the person ID is valid, and there is a person with the ID in the database
+	idParm, err := validation.ParseIdParm(ctx)
+	if !err {
+		valid = false
+		personValidation.ParmIdInexistent = true
+	}
+
+	id, validParmId := ValidIdParm(idParm)
+	if !validParmId {
+		valid = false
+		personValidation.InvalidParmId = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
+	} else {
+		personUpateData.ID = uint64(id)
+	}
+
+	if !PersonInDB(personUpateData.ID) {
+		valid = false
+		personValidation.PersonNotInDB = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
+	}
+
+	// Validate the remaining attributes
+	if personUpateData.Email != "" && !ValidEmail(personUpateData.Email) {
+		valid = false
+		personValidation.InvalidEmail = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", personUpateData.ID, personUpateData.Email))
+	}
+
+	if valid && personUpateData.Email != "" && !UniqueEmail(personUpateData.Email) {
+		valid = false
+		personValidation.EmailExists = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", personUpateData.ID, personUpateData.Password))
+	}
+
+	if personUpateData.Password != "" && !ValidPassword(personUpateData.Password) {
+		valid = false
+		personValidation.InvalidPassword = true
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", personUpateData.ID, personUpateData.Password))
+	}
+
+	if !valid {
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
+	}
+	c.services.Update(ctx, personUpateData)
 }
 
 func (c controller) Delete(ctx *gin.Context) {
-	errors := make([]string, 0)
+	valid := true
+	errorType := http.StatusOK
+	var personValidation models.PersonValidation
 
-	valid, idParm := ParseIdParm(ctx )
-	if !valid  {
-		errors = append(errors, "Person Delete, unable to parse id parameter")
+	idParm, err := validation.ParseIdParm(ctx)
+	if !err {
+		valid = false
+		personValidation.ParmIdInexistent = true
+		errorType = http.StatusUnprocessableEntity
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
-		errors = append(errors, fmt.Sprintf("Delete %d: invalid id",id))
+		valid = false
+		personValidation.InvalidParmId = true
+		errorType = http.StatusUnprocessableEntity
 	}
 
-	if !PersonInDB(uint64(id)) {
-		errors = append(errors, fmt.Sprintf("Delete %s: person not in db", idParm))
+	if valid && !PersonInDB(id) {
+		valid = false
+		personValidation.PersonNotInDB = true
+		errorType = http.StatusNotFound
 	}
 
-	if len(errors) > 0 {
-		ctx.JSON(500, gin.H{"error": errors})
+	if !valid {
+		ctx.JSON(errorType, gin.H{`error`: personValidation})
 		return
 	}
-
 	c.services.Delete(ctx, id)
 }

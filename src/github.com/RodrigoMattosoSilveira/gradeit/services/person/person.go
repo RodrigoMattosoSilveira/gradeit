@@ -1,17 +1,17 @@
-package services
+package person
 
 import (
 	"github.com/gin-gonic/gin"
+
 	"github.com/RodrigoMattosoSilveira/gradeit/models"
-	"github.com/RodrigoMattosoSilveira/gradeit/interfaces"
 )
 
 type service struct {
-	repository interfaces.PersonCrudInt
+	repository PersonSvcInt
 }
 
 // NewPerson - is a factory function to inject store in service.
-func NewPerson(s interfaces.PersonCrudInt) interfaces.PersonCrudInt {
+func NewPerson(s PersonSvcInt) PersonSvcInt {
 	return service{repository: s}
 }
 

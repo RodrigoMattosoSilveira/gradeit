@@ -25,4 +25,5 @@ go.work.sum
 bin/
 pkg/
 src/github.com/RodrigoMattosoSilveira/gradeit/gradeit
+src/github.com/RodrigoMattosoSilveira/gradeit/__debug*
 src/github.com/RodrigoMattosoSilveira/gradeit/data/
