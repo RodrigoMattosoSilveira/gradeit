@@ -156,27 +156,31 @@ func (c controller) Update(ctx *gin.Context) {
 
 func (c controller) Delete(ctx *gin.Context) {
 	valid := true
+	errorType := http.StatusOK
 	var personValidation models.PersonValidation
 
 	idParm, err := validation.ParseIdParm(ctx)
 	if !err {
 		valid = false
 		personValidation.ParmIdInexistent = true
+		errorType = http.StatusUnprocessableEntity
 	}
 
 	id, valid := ValidIdParm(idParm)
 	if !valid {
 		valid = false
 		personValidation.InvalidParmId = true
+		errorType = http.StatusUnprocessableEntity
 	}
 
-	if !PersonInDB(id) {
+	if valid && !PersonInDB(id) {
 		valid = false
 		personValidation.PersonNotInDB = true
+		errorType = http.StatusNotFound
 	}
 
 	if !valid {
-		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		ctx.JSON(errorType, gin.H{`error`: personValidation})
 		return
 	}
 	c.services.Delete(ctx, id)

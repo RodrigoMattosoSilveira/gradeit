@@ -218,8 +218,38 @@ func TestPerson(t *testing.T) {
 			t.Error("Expected Person DeletedAt, dit not get ", "it")
 		}
 	})
+	t.Run("GetInvalidParmId", func(t *testing.T) {
 
-	t.Run("GetPersonValidId", func(t *testing.T) {
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
+		// Validate the results
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool)
+		if !ok {
+			panic("GetId Unable to parse the error")
+		}
+		if !invalidPassword {
+			t.Error("Person GetId Expected Invalid Parameter Id error, got ", "something else")
+		}
+	})
+
+	t.Run("GetValidId", func(t *testing.T) {
 
 		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
@@ -266,22 +296,84 @@ func TestPerson(t *testing.T) {
 			t.Errorf("Expected new Person Password to be %s, got%s", albertEinstein.Password, returnedPersonPassword)
 		}
 	})
-
-	t.Run("GetPersonInvalidParmId", func(t *testing.T) {
+	t.Run("GetIdNotInDb", func(t *testing.T) {
 
 		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(" ")
 
 		// Set up the HTTP call with an invalid ID paramater
-		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
+		id := albertEinstein.ID - 1
+		if albertEinstein.ID == 1 {
+			id = 100
+		} 
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", id), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Errorf("Expected %d got %d", http.StatusNotFound, recorder.Code)
+		}
+	})
+
+	t.Run("GetPeople", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("GET", "/person", reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusOK {
+			t.Errorf("Expected %d got %d", http.StatusOK, recorder.Code)
+		}
+
+		// Validate the results
+	})
+
+	t.Run("DeleteInexistentParmId", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("DELETE", "/person", reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Errorf("Person DELETE Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
+		// Validate the results
+		// Note that we do not have a route for this case, hence there is anything else to validate!
+	})
+
+	t.Run("DeleteInvalidParmId", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("DELETE", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
 
 		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
 		if recorder.Code != http.StatusUnprocessableEntity {
-			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+			t.Errorf("Person DELETE Invalid Parameter Id Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
 		}
 
 		// Validate the results
@@ -291,33 +383,66 @@ func TestPerson(t *testing.T) {
 		}
 		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool)
 		if !ok {
-			panic("GetId Unable to parse the error")
+			panic("Person DELETE Invalid Parameter Id Unable to parse the error")
 		}
 		if !invalidPassword {
-			t.Error("Person GetId Expected Invalid Parameter Id error, got ", "something else")
+			t.Error("Person DELETE Expected Invalid Parameter Id error, got ", "something else")
 		}
 	})
 
-	t.Run("GetPersonIdNotInDb", func(t *testing.T) {
+	t.Run("DeleteIdNotInDb", func(t *testing.T) {
 
-		// It is not easy to pass a structure to an HTTP call!
+		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
 		json.NewEncoder(reqBodyBytes).Encode(" ")
 
-		var id uint64
+		// Set up the HTTP call with an invalid ID paramater
+		id := albertEinstein.ID - 1
 		if albertEinstein.ID == 1 {
 			id = 100
-		} else {
-			id = albertEinstein.ID - 1
-		}
-		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", id), reqBodyBytes)
+		} 
+		req, _ := http.NewRequest("DELETE", fmt.Sprintf("/person/%d", id), reqBodyBytes)
 		req.Header.Set("Content-Type", "application/json")
 		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
 		router.ServeHTTP(recorder, req)
 		if recorder.Code != http.StatusNotFound {
-			t.Errorf("Expected %d got %d", http.StatusNotFound, recorder.Code)
+			t.Errorf("Person DELETE Expected %d got %d", http.StatusNotFound, recorder.Code)
 		}
 	})
+
+	t.Run("DeleteValidId", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(" ")
+
+		// Set up the HTTP call with a valid ID
+		req, _ := http.NewRequest("DELETE", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code !=  http.StatusOK {
+			t.Errorf("Person DELETE Expected %d got %d", http.StatusOK, recorder.Code)
+		}
+
+		// Get the record and ensure its DeletedAt is not NULL
+		var people []models.Person
+		configs.DB.Unscoped().Where(fmt.Sprintf("id=%d", albertEinstein.ID)).Find(&people)
+		if len(people) != 1 {
+			t.Errorf("DELETE Unable to read deleted record id %d", albertEinstein.ID)
+		}
+		if people[0].ID != albertEinstein.ID {
+			t.Errorf("DELETE Retrieved Deleted record id %d does not match actual deleted record id %d", people[0].ID, albertEinstein.ID)
+		}
+		if people[0].Email != albertEinstein.Email {
+			t.Errorf("DELETE Retrieved Deleted record email %s does not match actual deleted record email %s ", people[0].Email, albertEinstein.Email)
+		}
+	})
+
 
 	// tear down logic
 }
