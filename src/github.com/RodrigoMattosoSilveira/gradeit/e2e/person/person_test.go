@@ -20,6 +20,8 @@ import (
 	"github.com/Jeffail/gabs"
 )
 
+// Relying on https://developer.mozilla.org/en-US/docs/Web/HTTP/Status#client_error_responses
+// 
 var albertEinstein = models.Person{
 	Name:     "Albert Einstein",
 	Email:    strings.ToLower("Albert.Einstein@gmail.com"),
@@ -318,7 +320,7 @@ func TestPerson(t *testing.T) {
 		}
 	})
 
-	t.Run("GetPeople", func(t *testing.T) {
+	t.Run("Get", func(t *testing.T) {
 
 		// Set up an empty Body
 		reqBodyBytes := new(bytes.Buffer)
@@ -337,7 +339,236 @@ func TestPerson(t *testing.T) {
 
 		// Validate the results
 	})
+	t.Run("UpdateNoParmId", func(t *testing.T) {
 
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(albertEinstein)
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("PUT", "/person", reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Errorf("Expected %d got %d", http.StatusNotFound, recorder.Code)
+		}
+	})
+	t.Run("UpdateInvalidParmId", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(albertEinstein)
+
+		// Set up the HTTP call with an invalid ID paramater
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/person/%s", "1A"), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Expected %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
+		// Validate the results
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidPassword, ok := jsonParsed.Path("error.invalid_parm_id").Data().(bool)
+		if !ok {
+			panic("Unable to parse the error")
+		}
+		if !invalidPassword {
+			t.Error("Expected Invalid Parameter Id error, got ", "something else")
+		}
+	})
+	t.Run("UpdateIdNotInDb", func(t *testing.T) {
+
+		// Set up an empty Body
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(francisBacon)
+
+		// Set up the HTTP call with an invalid ID paramater
+		id := albertEinstein.ID - 1
+		if albertEinstein.ID == 1 {
+			id = 100
+		} 
+		req, _ := http.NewRequest("GET", fmt.Sprintf("/person/%d", id), reqBodyBytes)
+		req.Header.Set("Content-Type", "application/json")
+		recorder := httptest.NewRecorder()
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusNotFound {
+			t.Errorf("Expected %d got %d", http.StatusNotFound, recorder.Code)
+		}
+	})
+	t.Run("UpdateInvalidEmail", func(t *testing.T) {
+
+		// Set up a person structure with an invalid email
+		invalidPerson := albertEinstein
+		invalidPerson.Email = "bad@email"
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(invalidPerson)
+
+		// Set up the HTTP call
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		recorder := httptest.NewRecorder()
+		req.Header.Set("Content-Type", "application/json")
+
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusUnprocessableEntity {
+			t.Errorf("Update Email Expected HTTP Status %d got %d", http.StatusUnprocessableEntity, recorder.Code)
+		}
+
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		invalidEmail, ok := jsonParsed.Path("error.invalid_email").Data().(bool)
+		if !ok {
+			panic("Update Email Unable to find Invalid Email path")
+		}
+		if !invalidEmail {
+			t.Error("Update Email Expected Person email to be invalid, got ", invalidEmail)
+		}
+	})
+	t.Run("UpdateName", func(t *testing.T) {
+
+		// Set up a person structure with the new email
+		updatedPerson := models.Person{
+			Name: "Albert NoMiddleName Einstein@gmail",
+		}
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(updatedPerson)
+
+		// Set up the HTTP call
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		recorder := httptest.NewRecorder()
+		req.Header.Set("Content-Type", "application/json")
+	
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusOK {
+			t.Errorf("Expected %d got %d", http.StatusOK, recorder.Code)
+		}
+
+		// Validate the results
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		exists := jsonParsed.ExistsP("data")
+		if !exists {
+			t.Error("Expected Person data, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.Name")
+		if !exists {
+			t.Error("Expected Person data.Name, dit not get ", "it")
+		}
+		returnedPersonName, ok := jsonParsed.Path("data.Name").Data().(string)
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		}
+		if returnedPersonName != updatedPerson.Name {
+			t.Errorf("Expected new Person Name to be %s, got %s", updatedPerson.Name, returnedPersonName)
+		}
+	})
+	t.Run("UpdateEmail", func(t *testing.T) {
+
+		// Set up a person structure with the new email
+		updatedPerson := models.Person{
+			Email: "albert.einstein.1879@gmail.com",
+		}
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(updatedPerson)
+
+		// Set up the HTTP call
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		recorder := httptest.NewRecorder()
+		req.Header.Set("Content-Type", "application/json")
+	
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusOK {
+			t.Errorf("Expected %d got %d", http.StatusOK, recorder.Code)
+		}
+
+		// Validate the results
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		exists := jsonParsed.ExistsP("data")
+		if !exists {
+			t.Error("Expected Person data, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.Email")
+		if !exists {
+			t.Error("Expected Person data.Password, dit not get ", "it")
+		}
+		returnedPersonEmail, ok := jsonParsed.Path("data.Email").Data().(string)
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		}
+		if returnedPersonEmail != updatedPerson.Email {
+			t.Errorf("Expected new Person Email to be %s, got %s", updatedPerson.Email, returnedPersonEmail)
+		}
+	})
+	t.Run("UpdatePassword", func(t *testing.T) {
+
+		// Set up a person structure with the new email
+		updatedPerson := models.Person{
+			Password: "syvlMOXG5Pj**oH7",
+		}
+
+		// Serialize the person structure with the invalid email
+		reqBodyBytes := new(bytes.Buffer)
+		json.NewEncoder(reqBodyBytes).Encode(updatedPerson)
+
+		// Set up the HTTP call
+		req, _ := http.NewRequest("PUT", fmt.Sprintf("/person/%d", albertEinstein.ID), reqBodyBytes)
+		recorder := httptest.NewRecorder()
+		req.Header.Set("Content-Type", "application/json")
+	
+		// Execute the HTTP call
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusOK {
+			t.Errorf("Expected %d got %d", http.StatusOK, recorder.Code)
+		}
+
+		// Validate the results
+		jsonParsed, err := gabs.ParseJSON([]byte(recorder.Body.Bytes()))
+		if err != nil {
+			panic(err)
+		}
+		exists := jsonParsed.ExistsP("data")
+		if !exists {
+			t.Error("Expected Person data, dit not get ", "it")
+		}
+		exists = jsonParsed.ExistsP("data.Password")
+		if !exists {
+			t.Error("Expected Person data.Password, dit not get ", "it")
+		}
+		returnedPersonPassword, ok := jsonParsed.Path("data.Password").Data().(string)
+		if !ok {
+			t.Error("Expected valid error, got ", "bad error")
+		}
+		if returnedPersonPassword != updatedPerson.Password {
+			t.Errorf("Expected new Person Name to be %s, got %s", updatedPerson.Password, returnedPersonPassword)
+		}
+	})
 	t.Run("DeleteInexistentParmId", func(t *testing.T) {
 
 		// Set up an empty Body
@@ -358,7 +589,6 @@ func TestPerson(t *testing.T) {
 		// Validate the results
 		// Note that we do not have a route for this case, hence there is anything else to validate!
 	})
-
 	t.Run("DeleteInvalidParmId", func(t *testing.T) {
 
 		// Set up an empty Body
@@ -437,9 +667,6 @@ func TestPerson(t *testing.T) {
 		}
 		if people[0].ID != albertEinstein.ID {
 			t.Errorf("DELETE Retrieved Deleted record id %d does not match actual deleted record id %d", people[0].ID, albertEinstein.ID)
-		}
-		if people[0].Email != albertEinstein.Email {
-			t.Errorf("DELETE Retrieved Deleted record email %s does not match actual deleted record email %s ", people[0].Email, albertEinstein.Email)
 		}
 	})
 

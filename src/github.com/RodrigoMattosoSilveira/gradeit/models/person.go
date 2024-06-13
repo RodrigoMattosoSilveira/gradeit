@@ -24,10 +24,11 @@ type Person struct {
 }
 
 type PersonValidation struct {
-	InvalidEmail     bool `json:"invalid_email,omitempty"`
-	EmailExists      bool `json:"email_exists,omitempty"`
-	InvalidPassword  bool `json:"invalid_password,omitempty"`
-	ParmIdInexistent bool `json:"parm_id_inexistent,omitempty"`
-	InvalidParmId    bool `json:"invalid_parm_id,omitempty"`
-	PersonNotInDB    bool `json:"person_not_in_db,omitempty"`
+	InvalidEmail     	bool `json:"invalid_email,omitempty"`
+	EmailExists      	bool `json:"email_exists,omitempty"`
+	InvalidPassword  	bool `json:"invalid_password,omitempty"`
+	ParmIdInexistent 	bool `json:"parm_id_inexistent,omitempty"`
+	InvalidParmId    	bool `json:"invalid_parm_id,omitempty"`
+	PersonNotInDB    	bool `json:"person_not_in_db,omitempty"`
+	NoUpdateAttributes	bool `json:"no_update-attributes,omitempty"`
 }

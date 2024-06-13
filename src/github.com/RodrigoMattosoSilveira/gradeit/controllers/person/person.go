@@ -108,50 +108,68 @@ func (c controller) Update(ctx *gin.Context) {
 			}
 		}
 	}
-	person := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
+	personUpateData := models.Person{Name: body.Name, Email: strings.ToLower(body.Email), Password: body.Password}
 
+	// Update approach
+	// - Ensure at least one attribute is submtied for update
+	// - Ensure that the person ID is valid, and there is a person with the ID in the database
+	// - Validate the remaining attributes
+
+	// At least one attribute must be submitted for update
+	if personUpateData.Name == "" && personUpateData.Email == "" && personUpateData.Password == "" {
+		personValidation.NoUpdateAttributes = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
+	}
+
+	// Ensure that the person ID is valid, and there is a person with the ID in the database
 	idParm, err := validation.ParseIdParm(ctx)
 	if !err {
 		valid = false
 		personValidation.ParmIdInexistent = true
 	}
 
-	id, valid := ValidIdParm(idParm)
-	if !valid {
+	id, validParmId := ValidIdParm(idParm)
+	if !validParmId {
 		valid = false
 		personValidation.InvalidParmId = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
 	} else {
-		person.ID = id
+		personUpateData.ID = uint64(id)
 	}
 
-	if !PersonInDB(uint64(person.ID)) {
+	if !PersonInDB(personUpateData.ID) {
 		valid = false
 		personValidation.PersonNotInDB = true
+		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
+		return
 	}
 
-	if !ValidEmail(person.Email) {
+	// Validate the remaining attributes
+	if personUpateData.Email != "" && !ValidEmail(personUpateData.Email) {
 		valid = false
 		personValidation.InvalidEmail = true
-		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", person.ID, person.Email))
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid email = %s", personUpateData.ID, personUpateData.Email))
 	}
 
-	if valid && !UniqueEmail(person.Email) {
+	if valid && personUpateData.Email != "" && !UniqueEmail(personUpateData.Email) {
 		valid = false
 		personValidation.EmailExists = true
-		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", person.ID, person.Password))
+		slog.Error(fmt.Sprintf("PersonCreate %d: email already exists = %s", personUpateData.ID, personUpateData.Password))
 	}
 
-	if !ValidPassword(person.Password) {
+	if personUpateData.Password != "" && !ValidPassword(personUpateData.Password) {
 		valid = false
 		personValidation.InvalidPassword = true
-		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", person.ID, person.Password))
+		slog.Error(fmt.Sprintf("PersonCreate %d: invalid password = %s", personUpateData.ID, personUpateData.Password))
 	}
 
 	if !valid {
 		ctx.JSON(http.StatusUnprocessableEntity, gin.H{`error`: personValidation})
 		return
 	}
-	c.services.Update(ctx, person)
+	c.services.Update(ctx, personUpateData)
 }
 
 func (c controller) Delete(ctx *gin.Context) {
