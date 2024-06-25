@@ -12,7 +12,6 @@ require (
 
 require (
 	github.com/Jeffail/gabs v1.4.0
-	github.com/Jeffail/gabs/v2 v2.7.0 // indirect
 	github.com/bytedance/sonic v1.11.8 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cloudwego/base64x v0.1.4 // indirect

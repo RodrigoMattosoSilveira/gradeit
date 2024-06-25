@@ -55,6 +55,9 @@ func TestPerson(t *testing.T) {
 	router := configs.GetRouter()
 	routes.RoutesPerson(router)
 	setupPersonTable()
+	// ***************
+	// Create a Person 
+	// ***************
 	t.Run("CreateInvalidEmail", func(t *testing.T) {
 
 		// Set up a person structure with an invalid email
@@ -220,6 +223,9 @@ func TestPerson(t *testing.T) {
 			t.Error("Expected Person DeletedAt, dit not get ", "it")
 		}
 	})
+	// ***************
+	// Get a Person 
+	// ***************
 	t.Run("GetInvalidParmId", func(t *testing.T) {
 
 		// Set up an empty Body
@@ -339,6 +345,9 @@ func TestPerson(t *testing.T) {
 
 		// Validate the results
 	})
+	// ***************
+	// Update a Person 
+	// ***************
 	t.Run("UpdateNoParmId", func(t *testing.T) {
 
 		// Set up an empty Body
@@ -569,6 +578,9 @@ func TestPerson(t *testing.T) {
 			t.Errorf("Expected new Person Name to be %s, got %s", updatedPerson.Password, returnedPersonPassword)
 		}
 	})
+	// ***************
+	// Delete a Person 
+	// ***************
 	t.Run("DeleteInexistentParmId", func(t *testing.T) {
 
 		// Set up an empty Body
